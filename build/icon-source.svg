@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- macOS icon grid: 824px body centred in a 1024 canvas (100px transparent margin) -->
+  <g transform="translate(100 100) scale(0.8047)">
+    <rect width="1024" height="1024" rx="228" fill="#0B1226"/>
+    <rect x="3" y="3" width="1018" height="1018" rx="225" fill="none" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="6"/>
+    <!-- the cairn: three stacked stones, a lit green one on top -->
+    <rect x="222" y="590" width="580" height="170" rx="85" fill="#3A6FE0"/>
+    <rect x="282" y="420" width="430" height="150" rx="75" fill="#8FB5FA"/>
+    <rect x="402" y="270" width="240" height="130" rx="65" fill="#10B981"/>
+    <circle cx="696" cy="248" r="24" fill="#F59E0B"/>
+  </g>
+</svg>

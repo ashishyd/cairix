@@ -1,0 +1,54 @@
+{
+  "name": "cairix",
+  "version": "0.1.0",
+  "description": "Cairix — run it, fix it, learn it. A project-centric developer cockpit.",
+  "main": "./out/main/index.js",
+  "author": "Kitium AI",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "icons": "node scripts/make-icons.mjs",
+    "dist:mac": "electron-vite build && electron-builder --mac",
+    "install:mac": "node scripts/install-to-applications.mjs",
+    "deploy:mac": "pnpm dist:mac && node scripts/install-to-applications.mjs --open",
+    "e2e": "node tests/e2e/smoke.mjs",
+    "postinstall": "node scripts/ensure-electron.mjs"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "autoprefixer": "^10.6.1",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "lucide-react": "^1.52.0",
+    "playwright-core": "^1.63.0",
+    "postcss": "^8.5.28",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwindcss": "^3.4.19",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.6",
+    "vitest": "^5.0.3",
+    "zustand": "^5.0.15"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild"
+    ]
+  }
+}

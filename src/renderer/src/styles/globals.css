@@ -1,0 +1,167 @@
+@import '@xterm/xterm/css/xterm.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens. Colours are RGB channels so Tailwind can apply opacity.
+ * Light is the default; dark follows prefers-color-scheme, which the main
+ * process drives via nativeTheme.themeSource (so the Settings choice of
+ * Light / Dark / System needs no JS here).
+ */
+:root {
+  --cx-bg: 255 255 255;
+  --cx-surface: 247 248 250;
+  --cx-raised: 255 255 255;
+  --cx-hover: 238 240 245;
+  --cx-border: 226 229 236;
+  --cx-text: 17 24 39;
+  --cx-muted: 76 86 104;
+  --cx-faint: 102 111 129;
+  --cx-sidebar: 246 247 250;
+  --cx-sidebar-alpha: 0.62;
+  --cx-accent-fg: 255 255 255;
+  --cx-success: 4 120 87;
+  --cx-warning: 175 80 8;
+  --cx-danger: 185 28 28;
+  --cx-accent-text: var(--cx-accent-ink-light);
+  /* Base size; Settings writes this. The type scale below is relative to it. */
+  --cx-font-size: 13px;
+  --cx-text-2xs: calc(var(--cx-font-size) * 0.81);
+  --cx-text-xs: calc(var(--cx-font-size) * 0.85);
+  --cx-text-sm: calc(var(--cx-font-size) * 0.92);
+  --cx-text-base: var(--cx-font-size);
+  --cx-text-md: calc(var(--cx-font-size) * 1.08);
+  --cx-text-lg: calc(var(--cx-font-size) * 1.15);
+  --cx-text-xl: calc(var(--cx-font-size) * 1.54);
+  --cx-text-2xl: calc(var(--cx-font-size) * 2);
+  /* Spacing: absolute so chrome stays predictable across text-size settings. */
+  --cx-space-1: 4px;
+  --cx-space-2: 8px;
+  --cx-space-3: 12px;
+  --cx-space-4: 16px;
+  --cx-space-5: 20px;
+  --cx-space-6: 24px;
+  --cx-space-8: 32px;
+  --cx-page-x: 32px;
+  --cx-page-y: 24px;
+  --cx-row-y: 10px;
+  --cx-radius: 10px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --cx-bg: 13 18 33;
+    --cx-surface: 19 26 45;
+    --cx-raised: 24 32 54;
+    --cx-hover: 31 41 66;
+    --cx-border: 40 51 78;
+    --cx-text: 232 236 245;
+    --cx-muted: 170 180 200;
+    --cx-faint: 134 146 170;
+    --cx-sidebar: 11 18 38;
+    --cx-sidebar-alpha: 0.55;
+    --cx-success: 52 211 153;
+    --cx-warning: 251 191 36;
+    --cx-danger: 248 113 113;
+    --cx-accent-text: var(--cx-accent-ink-dark);
+    color-scheme: dark;
+  }
+}
+
+/*
+ * Accent presets: the fill (white text on it is >= 4.5:1), plus readable ink
+ * for text on light and dark surfaces. All colour tokens were checked against
+ * WCAG AA (4.5:1) on the app's background, surface and hover colours.
+ */
+:root,
+[data-accent='blue'] { --cx-accent: 50 100 215; --cx-accent-ink-light: 44 90 190; --cx-accent-ink-dark: 143 181 250; }
+[data-accent='green'] { --cx-accent: 4 120 87; --cx-accent-ink-light: 5 120 88; --cx-accent-ink-dark: 52 211 153; }
+[data-accent='amber'] { --cx-accent: 180 83 9; --cx-accent-ink-light: 161 72 6; --cx-accent-ink-dark: 251 191 36; }
+[data-accent='violet'] { --cx-accent: 112 66 222; --cx-accent-ink-light: 109 40 217; --cx-accent-ink-dark: 196 181 253; }
+[data-accent='rose'] { --cx-accent: 205 40 85; --cx-accent-ink-light: 190 24 93; --cx-accent-ink-dark: 253 164 175; }
+[data-accent='slate'] { --cx-accent: 88 104 130; --cx-accent-ink-light: 71 85 105; --cx-accent-ink-dark: 203 213 225; }
+
+[data-density='compact'] {
+  --cx-row-y: 6px;
+  --cx-page-y: 20px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/*
+ * With macOS vibrancy the window itself is translucent, so the page must be
+ * transparent for the sidebar to show it. The main area paints its own
+ * opaque background. Without vibrancy the page paints everything.
+ */
+body {
+  margin: 0;
+  background: transparent;
+  color: rgb(var(--cx-text));
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  font-size: var(--cx-font-size);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html[data-vibrancy='off'] body { background: rgb(var(--cx-bg)); }
+
+.sidebar-bg { background: rgb(var(--cx-sidebar) / var(--cx-sidebar-alpha)); }
+html[data-vibrancy='off'] .sidebar-bg { background: rgb(var(--cx-surface)); }
+
+/* Selectable content opts in; the rest of the UI behaves like a native app. */
+.selectable,
+.selectable * {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.drag { -webkit-app-region: drag; }
+.no-drag { -webkit-app-region: no-drag; }
+
+button { font: inherit; color: inherit; }
+button:disabled { cursor: default; }
+:focus-visible { outline: 2px solid rgb(var(--cx-accent) / 0.65); outline-offset: 1px; }
+input:focus-visible { outline: none; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--cx-faint) / 0.35);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--cx-faint) / 0.6); background-clip: content-box; border: 3px solid transparent; }
+
+.xterm { padding: 8px 10px; }
+.xterm-viewport { background: transparent !important; }
+
+/* Repeated chrome: uppercase section eyebrow (sidebar, dashboard, agents…). */
+.cx-label {
+  font-size: var(--cx-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(var(--cx-faint));
+}
+
+/* Standard content inset for Home / Machine pages. */
+.cx-page {
+  margin-left: auto;
+  margin-right: auto;
+  padding: var(--cx-page-y) var(--cx-page-x);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

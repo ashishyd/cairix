@@ -1,0 +1,26 @@
+appId: com.kitiumai.cairix
+productName: Cairix
+copyright: Kitium AI
+directories:
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+  - '!**/.vscode/*'
+extraResources:
+  - from: resources/icon.png
+    to: icon.png
+  - from: resources/trayTemplate.png
+    to: trayTemplate.png
+  - from: resources/trayTemplate@2x.png
+    to: trayTemplate@2x.png
+mac:
+  category: public.app-category.developer-tools
+  icon: build/icon.icns
+  target:
+    - target: dmg
+      arch: [arm64]
+    - target: zip
+      arch: [arm64]
+dmg:
+  artifactName: '${productName}-${version}-${arch}.${ext}'

@@ -1,0 +1,15 @@
+{
+  "apiVersion": 1,
+  "id": "acme.hello",
+  "name": "Hello",
+  "version": "1.0.0",
+  "description": "A tiny example: a dashboard widget, a project tab and a command.",
+  "author": "Kitium AI",
+  "main": "index.js",
+  "permissions": ["projects.read", "ports.read", "storage", "notify"],
+  "contributes": {
+    "widgets": [{ "id": "counter", "title": "Hello counter", "description": "Counts your projects and dev servers, and your clicks.", "size": "half" }],
+    "tabs": [{ "id": "projects", "title": "Hello" }],
+    "commands": [{ "id": "say", "title": "Say hello" }]
+  }
+}

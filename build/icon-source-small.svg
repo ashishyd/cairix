@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Simplified mark for icon sizes up to 64px: chunkier stones, no amber spark, so it stays legible. -->
+  <g transform="translate(100 100) scale(0.8047)">
+    <rect width="1024" height="1024" rx="228" fill="#0B1226"/>
+    <rect x="182" y="570" width="660" height="220" rx="110" fill="#3A6FE0"/>
+    <rect x="262" y="370" width="480" height="180" rx="90" fill="#8FB5FA"/>
+    <rect x="372" y="190" width="300" height="160" rx="80" fill="#10B981"/>
+  </g>
+</svg>

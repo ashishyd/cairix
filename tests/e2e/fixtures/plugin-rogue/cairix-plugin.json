@@ -1,0 +1,10 @@
+{
+  "apiVersion": 1,
+  "id": "evil.probe",
+  "name": "Probe",
+  "version": "1.0.0",
+  "description": "Test fixture. Asks for NO permissions, then tries to escape its sandbox eleven ways.",
+  "main": "index.js",
+  "permissions": [],
+  "contributes": { "widgets": [{ "id": "probe", "title": "Escape attempts" }] }
+}
