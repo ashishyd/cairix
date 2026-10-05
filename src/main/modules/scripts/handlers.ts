@@ -1,9 +1,8 @@
-import { execFile } from 'child_process'
 import { z } from 'zod'
 import { IPC } from '@shared/ipc'
 import type { Project, Workspace } from '@shared/types'
 import { handle } from '../../ipc'
-import { spawnEnv } from '../../shell-env'
+import { runInTerminal, shq } from '../../terminal'
 import { findProject, projectLabel } from '../projects/store'
 import { detectScripts, type ResolvedScript } from './detect'
 import { buildSpawnArgs, validateExtraArgs, type ScriptRunner } from './runner'
@@ -28,9 +27,6 @@ function requireTrusted(workspace: Workspace): void {
     throw new Error(`Trust "${workspace.name}" before running its scripts. Scripts can run any code in that folder.`)
   }
 }
-
-const shq = (s: string): string => `'${s.replace(/'/g, `'\\''`)}'`
-const appleScriptEscape = (s: string): string => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 
 export function registerScriptsHandlers(runner: ScriptRunner): void {
   handle(IPC.scriptsList, z.tuple([z.string().max(64)]), async (projectId) => {
@@ -57,19 +53,6 @@ export function registerScriptsHandlers(runner: ScriptRunner): void {
     const { spawn: spec } = script
     const argv = [spec.file, ...buildSpawnArgs(spec, validateExtraArgs(req.args))]
     const line = `cd ${shq(spec.cwd)} && ${argv.map(shq).join(' ')}`
-    const env = await spawnEnv()
-    await new Promise<void>((resolveP, reject) => {
-      execFile(
-        'osascript',
-        [
-          '-e',
-          'tell application "Terminal" to activate',
-          '-e',
-          `tell application "Terminal" to do script "${appleScriptEscape(line)}"`
-        ],
-        { env },
-        (err) => (err ? reject(new Error('Could not open Terminal.')) : resolveP())
-      )
-    })
+    await runInTerminal(line)
   })
 }

@@ -9,6 +9,8 @@ Add the folders you work in. Cairix finds every project inside them (monorepo ap
 - **Projects** — add folders; discover nested apps (monorepos, Node, Python, Compose, Make, Cargo, Go). Folders start untrusted until you opt in.
 - **Scripts** — one-click Run for `package.json`, `pyproject.toml`, Django `manage.py`, `Makefile`, Compose, and `.py` entry points.
 - **Ports** — every localhost listener, memory footprint, project link, protected system services, and a safe kill.
+- **Processes** — background dev tooling, databases and your other processes, one row per process tree with memory, CPU, uptime and the ports it owns, and a guarded Stop (graceful first, force only if you confirm).
+- **Commands** — every command you run in any terminal, counted from your shell history: how many times, a plain-English description, one-click re-run (in your home folder or a trusted project), a filter box, sorting (most run first by default) and a “never track” list for a single command or a whole program.
 - **Agents** — live Claude Code sessions and Cursor workers/plans (read-only).
 - **Review** — one project tab for Overview, Changes, Tasks, and Audit:
   - **Changes** — instant checks (secrets, debug leftovers, conflict markers, risky patterns), optional Claude AI review, fix with diff preview and undo, learn links
@@ -65,6 +67,8 @@ Every feature is a **module**: a manifest entry in `src/shared/modules.ts`, a se
 - **Secrets stay out of the UI.** Command lines are redacted before they leave the main process (`--api-key …`, `TOKEN=…`, `user:pass@host`, known token shapes). Agent views carry no command line at all, because Cursor’s workers receive `--api-key` on argv.
 - **Claude’s session registry is read narrowly.** Only `~/.claude/sessions/<pid>.json`, only whitelisted fields. The neighbouring `*.key` files (per-session tokens) and the messaging socket path are never read.
 - **Scripts get your real terminal environment** (login-shell `PATH`, `NVM_DIR`, …) minus Cairix’s own variables (`ELECTRON_RENDERER_URL`, `npm_*`, `NODE_ENV`) so another Electron app started from Cairix doesn’t load Cairix’s page.
+- **Command history stays on your Mac and skips secrets.** Cairix reads `~/.zsh_history` (also bash and fish) and only counts new lines. Any command containing a token, password or key is dropped, never stored. “Never track” also forgets what was already counted, and the module can be switched off under Settings → Modules, after which nothing is read. Re-running sends only an id: main looks the command up itself, asks before anything that deletes, forces or runs as administrator, and opens editors and REPLs in Terminal.app.
+- **Stopping a process is re-derived in main.** The UI sends a pid and the view it was looking at; main rescans, accepts only a listed tree root, and refuses shells, macOS services, installed apps, other users' processes and Cairix itself.
 - Renderer is sandboxed with a strict CSP; IPC arguments are validated with zod; links open only `https://` or `http://localhost`.
 
 ## Notes and known limits

@@ -101,6 +101,19 @@ const api: CairixAPI = {
   },
   agents: {
     snapshot: call(IPC.agentsSnapshot)
+  },
+  processes: {
+    scan: call(IPC.processesScan),
+    stop: call(IPC.processesStop),
+    watch: call(IPC.processesWatch),
+    onChange: (cb) => on(IPC.processesChanged, cb)
+  },
+  history: {
+    list: call(IPC.historyList),
+    rerun: call(IPC.historyRerun),
+    ignore: call(IPC.historyIgnore),
+    unignore: call(IPC.historyUnignore),
+    onChange: (cb) => on(IPC.historyChanged, cb)
   }
 }
 

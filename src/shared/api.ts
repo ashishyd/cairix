@@ -9,6 +9,12 @@ import type {
   AgentsSnapshot,
   AgentTask,
   AppInfo,
+  HistoryRerunRequest,
+  HistoryRerunResult,
+  HistoryRule,
+  HistorySnapshot,
+  ProcessSnapshot,
+  StopProcessRequest,
   StartTaskRequest,
   TaskCapabilities,
   CustomAction,
@@ -136,5 +142,22 @@ export interface CairixAPI {
   agents: {
     /** Live, read-only view of local Claude Code and Cursor agents. */
     snapshot(): Promise<AgentsSnapshot>
+  }
+  processes: {
+    scan(filter: 'dev' | 'all'): Promise<ProcessSnapshot>
+    /** Stops a background process and everything it launched. Main re-derives the target from a fresh scan. */
+    stop(req: StopProcessRequest): Promise<KillResult>
+    /** Tell main whether the UI is visible so it only polls while someone is looking. */
+    watch(visible: boolean, filter: 'dev' | 'all'): Promise<void>
+    onChange(cb: (snapshot: ProcessSnapshot) => void): Unsubscribe
+  }
+  history: {
+    list(): Promise<HistorySnapshot>
+    /** Runs a remembered command again. The UI sends an id, never command text. */
+    rerun(req: HistoryRerunRequest): Promise<HistoryRerunResult>
+    /** Stops tracking, and forgets, one command or every command of a program. */
+    ignore(rule: HistoryRule): Promise<HistorySnapshot>
+    unignore(rule: HistoryRule): Promise<HistorySnapshot>
+    onChange(cb: (snapshot: HistorySnapshot) => void): Unsubscribe
   }
 }

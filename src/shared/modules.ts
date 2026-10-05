@@ -66,6 +66,22 @@ export const MODULES: ModuleManifest[] = [
     defaultEnabled: true
   },
   {
+    id: 'processes',
+    title: 'Processes',
+    description: 'Background processes running on your Mac, with memory and CPU, and a safe way to close them.',
+    scope: 'machine',
+    status: 'ready',
+    defaultEnabled: true
+  },
+  {
+    id: 'history',
+    title: 'Commands',
+    description: 'Commands you run in any terminal: how often, what they do, one-click re-run, and a never-track list.',
+    scope: 'machine',
+    status: 'ready',
+    defaultEnabled: true
+  },
+  {
     id: 'agents',
     title: 'Agents',
     description: 'Live view of local Claude Code and Cursor agents.',

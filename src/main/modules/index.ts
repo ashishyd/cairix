@@ -1,5 +1,6 @@
 import { homedir } from 'os'
 import { IPC } from '@shared/ipc'
+import { isModuleEnabled, MODULES } from '@shared/modules'
 import type { PortSnapshot } from '@shared/types'
 import { broadcast } from '../broadcast'
 import { getSettings } from '../settings'
@@ -27,6 +28,10 @@ import { registerAgentsHandlers } from './agents/handlers'
 import { AgentsService } from './agents/service'
 import { registerAppHandlers } from './app/handlers'
 import { runCommand } from './ports/exec'
+import { registerHistoryHandlers } from './history/handlers'
+import { HistoryService } from './history/service'
+import { registerProcessesHandlers } from './processes/handlers'
+import { ProcessesService } from './processes/service'
 import { registerPortsHandlers } from './ports/handlers'
 import { PortsService } from './ports/service'
 import { registerProjectsHandlers } from './projects/handlers'
@@ -75,6 +80,23 @@ export function registerModules(): Modules {
       broadcast(IPC.portsChanged, snapshot)
       refreshTray()
     }
+  })
+
+  const processes = new ProcessesService({
+    ports: () => ports.snapshot()?.entries ?? [],
+    activeRunPids: () => runner.activePids(),
+    onSnapshot: (snapshot) => broadcast(IPC.processesChanged, snapshot)
+  })
+
+  const history = new HistoryService({
+    dataDir: app.getPath('userData'),
+    // A test or CI home folder can be injected the same way as for Agents.
+    home: process.env.CAIRIX_HOME || homedir(),
+    isEnabled: () => {
+      const m = MODULES.find((x) => x.id === 'history')
+      return !!m && isModuleEnabled(m, getSettings().enabledModules)
+    },
+    onChange: (snapshot) => broadcast(IPC.historyChanged, snapshot)
   })
 
   const agents = new AgentsService({
@@ -141,6 +163,8 @@ export function registerModules(): Modules {
   registerScriptsHandlers(runner)
   registerPortsHandlers(ports)
   registerAgentsHandlers(agents)
+  registerProcessesHandlers(processes)
+  registerHistoryHandlers(history, { runner, findProject })
   registerChangesHandlers(changes)
   registerAuditHandlers(audit, changes)
   registerPluginsHandlers(plugins, broker)
@@ -155,6 +179,7 @@ export function registerModules(): Modules {
     openInApp: openInMacApp
   })
   ports.start()
+  history.start()
 
   return {
     runner,
@@ -162,6 +187,8 @@ export function registerModules(): Modules {
     dispose: () => {
       tasks.stopAll()
       plugins.stopAll()
+      history.stop()
+      processes.stop()
       ports.stop()
       runner.stopAll()
     }

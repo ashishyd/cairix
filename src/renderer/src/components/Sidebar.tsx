@@ -7,6 +7,8 @@ import {
   Bot,
   Package,
   Plug,
+  Activity,
+  SquareTerminal,
   RefreshCw,
   Search,
   Settings,
@@ -31,7 +33,7 @@ import { useUiStore } from '@/stores/ui-store'
 import { BrandLogo } from './BrandLogo'
 import { IconButton, Kbd, StatusDot } from './ui'
 
-const MACHINE_ICONS: Record<string, LucideIcon> = { ports: Plug, agents: Bot, actions: Zap, plugins: Puzzle }
+const MACHINE_ICONS: Record<string, LucideIcon> = { ports: Plug, processes: Activity, history: SquareTerminal, agents: Bot, actions: Zap, plugins: Puzzle }
 
 function NavItem({ icon: Icon, label, active, onClick, trailing }: { icon: LucideIcon; label: string; active: boolean; onClick: () => void; trailing?: React.ReactNode }): React.JSX.Element {
   return (

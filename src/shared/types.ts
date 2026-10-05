@@ -456,3 +456,94 @@ export interface AppInfo {
 }
 
 export type ExternalApp = 'finder' | 'terminal' | 'vscode' | 'cursor'
+
+// ───────────────────────── Processes ─────────────────────────
+
+/** A background process (or the top of a process tree) owned by the current user. */
+export interface ProcessEntry {
+  pid: number
+  /** Short, human name (framework or executable). */
+  name: string
+  /** Full command line, redacted. */
+  cmdline: string
+  rssKb: number
+  /** Memory of this process and everything it launched, in KiB. */
+  treeRssKb: number
+  /** Number of processes in the tree, this one included. */
+  procCount: number
+  cpu: number
+  uptimeSec: number
+  /** Ports the tree is listening on. */
+  ports: number[]
+  cwd?: string
+  /** `runId` when Cairix itself started this tree. */
+  runId?: string
+  framework?: string
+  category: PortCategory
+}
+
+export interface ProcessSnapshot {
+  at: number
+  /** Which view this answers: dev tooling only, or all of the user's processes. */
+  filter: 'dev' | 'all'
+  entries: ProcessEntry[]
+  /** Total processes owned by the user, before filtering. */
+  total: number
+  error?: string
+}
+
+export interface StopProcessRequest {
+  pid: number
+  force?: boolean
+  /** The view the row was listed in, so main re-derives the same tree. */
+  filter: 'dev' | 'all'
+}
+
+// ───────────────────────── Command history ─────────────────────────
+
+/** One distinct command from the user's shell history, with how often it ran. */
+export interface HistoryEntry {
+  id: string
+  command: string
+  count: number
+  firstSeen: number
+  lastRun: number
+  /** First word, e.g. `git`. */
+  program: string
+  /** Plain-English summary of what the command does. */
+  description: string
+  /** Deletes, forces, or runs as root: re-running asks first. */
+  risky: boolean
+  /** Needs a real terminal (editors, ssh, REPLs): re-runs in Terminal.app. */
+  interactive: boolean
+}
+
+/** "Never track" rule: one exact command, or every command of one program. */
+export interface HistoryRule {
+  kind: 'command' | 'program'
+  value: string
+}
+
+export interface HistorySnapshot {
+  entries: HistoryEntry[]
+  rules: HistoryRule[]
+  /** History files Cairix reads, and whether each exists. */
+  sources: Array<{ path: string; found: boolean }>
+  /** False when the History module is switched off in Settings. */
+  tracking: boolean
+}
+
+export interface HistoryRerunRequest {
+  id: string
+  /** Run inside this project's folder instead of the home folder (must be a trusted folder). */
+  projectId?: string
+  /** The user confirmed a risky command. */
+  confirmed?: boolean
+}
+
+export interface HistoryRerunResult {
+  /** Present when the command runs inside Cairix (output is shown in a log). */
+  runId?: string
+  /** Present when it was handed to Terminal.app. */
+  message?: string
+}

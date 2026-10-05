@@ -41,6 +41,17 @@ export const IPC = {
 
   agentsSnapshot: 'agents:snapshot',
 
+  processesScan: 'processes:scan',
+  processesStop: 'processes:stop',
+  processesWatch: 'processes:watch',
+  processesChanged: 'processes:changed',
+
+  historyList: 'history:list',
+  historyRerun: 'history:rerun',
+  historyIgnore: 'history:ignore',
+  historyUnignore: 'history:unignore',
+  historyChanged: 'history:changed',
+
   changesGet: 'changes:get',
   changesReview: 'changes:review',
   changesDismiss: 'changes:dismiss',

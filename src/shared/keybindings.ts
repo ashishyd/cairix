@@ -27,6 +27,8 @@ export const COMMANDS: CommandDef[] = [
   { id: 'nav.agents', title: 'Go to Agents', group: 'Navigate', default: 'Mod+3' },
   { id: 'nav.actions', title: 'Go to Actions', group: 'Navigate', default: 'Mod+4' },
   { id: 'nav.plugins', title: 'Go to Plugins', group: 'Navigate', default: 'Mod+5' },
+  { id: 'nav.processes', title: 'Go to Processes', group: 'Navigate', default: 'Mod+6' },
+  { id: 'nav.history', title: 'Go to Commands', group: 'Navigate', default: 'Mod+7' },
   { id: 'project.tab.next', title: 'Next project tab', group: 'Project', default: 'Mod+Alt+ArrowRight' },
   { id: 'project.tab.prev', title: 'Previous project tab', group: 'Project', default: 'Mod+Alt+ArrowLeft' },
   { id: 'project.scripts', title: 'Open Scripts', group: 'Project', default: 'Mod+Shift+1' },

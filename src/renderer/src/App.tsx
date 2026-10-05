@@ -17,6 +17,8 @@ import { ActionDialogs } from './modules/actions/ActionDialogs'
 import { useActionsStore } from './stores/actions-store'
 import { usePluginsStore } from './stores/plugins-store'
 import { useAgentsStore } from './stores/agents-store'
+import { useHistoryStore } from './stores/history-store'
+import { useProcessesStore } from './stores/processes-store'
 import { usePortsStore } from './stores/ports-store'
 import { findProjectIn, projectLabel, useProjectsStore } from './stores/projects-store'
 import { useScriptsStore } from './stores/scripts-store'
@@ -93,6 +95,7 @@ export default function App(): React.JSX.Element {
 
   // Load everything once; each store also subscribes to live updates from main.
   useEffect(() => {
+    useProcessesStore.getState().load()
     void Promise.all([
       useSettingsStore.getState().load(),
       useProjectsStore.getState().load(),
@@ -100,6 +103,7 @@ export default function App(): React.JSX.Element {
       usePortsStore.getState().load(),
       useAgentsStore.getState().load(),
       useActionsStore.getState().load(),
+      useHistoryStore.getState().load(),
       usePluginsStore.getState().load()
     ]).catch((e) => toast.error(`Could not start: ${errMsg(e)}`))
     return window.cairix.app.onOpenPalette(() => useUiStore.getState().setPalette(true))

@@ -91,6 +91,23 @@ writeFileSync(join(fakeHome, '.claude/sessions/99999.json'), session({ pid: 9999
 mkdirSync(join(fakeHome, '.cursor/plans'), { recursive: true })
 writeFileSync(join(fakeHome, '.cursor/plans/demo_12345678.plan.md'), '---\nname: E2E plan title\n---\nbody')
 
+// Shell history for the Commands page. The secret line must never be stored.
+writeFileSync(
+  join(fakeHome, '.zsh_history'),
+  [
+    ': 1700000000:0;git status',
+    ': 1700000001:0;git status',
+    ': 1700000002:0;git status',
+    ': 1700000003:0;echo cairix-rerun-ok',
+    ': 1700000004:0;echo cairix-rerun-ok',
+    ': 1700000005:0;ls -la',
+    ': 1700000006:0;curl -H "x" --api-key sk-abcdefghijklmnopqrstuvwxyz https://example.com',
+    ''
+  ].join('\n')
+)
+// A background process for the Processes page to list and stop.
+const bgProc = spawn('sleep', ['601'], { stdio: 'ignore' })
+
 // ───────────────────────── harness ─────────────────────────
 
 let failures = 0
@@ -262,6 +279,84 @@ await step('Agents page lists a live Claude session, hides stale ones, and never
   await settle(); await page.screenshot({ path: join(shots, '13-agents.png') })
 })
 
+await step('Commands page ranks by how often you ran them, explains them, and never stores secrets', async () => {
+  await page.getByRole('complementary', { name: 'Sidebar' }).getByRole('button', { name: /^Commands/ }).click()
+  await page.getByText('git status', { exact: true }).first().waitFor({ timeout: 15_000 })
+  const rows = await page.locator('main span.font-mono.font-medium').allInnerTexts()
+  assert(rows[0] === 'git status', `most-run command should be first, got ${rows.join(' | ')}`)
+  assert(rows[1] === 'echo cairix-rerun-ok', `second should be the next most run: ${rows.join(' | ')}`)
+  const main = await page.locator('main').innerText()
+  assert(main.includes('3×') && main.includes('2×'), 'run counts missing')
+  assert(main.includes('Shows which files changed'), 'plain-English description missing')
+  assert(!main.includes('sk-abcdefghij') && !main.includes('api-key'), 'a command with a secret was stored')
+  await settle(); await page.screenshot({ path: join(shots, '14-commands.png') })
+})
+
+await step('Commands: filter narrows the list, sort can change', async () => {
+  const box = page.getByRole('textbox', { name: 'Filter commands' })
+  await box.fill('echo')
+  await page.waitForFunction(() => document.querySelectorAll('main span.font-mono.font-medium').length === 1)
+  await box.fill('which files changed') // matches the description too
+  await page.getByText('git status', { exact: true }).first().waitFor()
+  await box.fill('')
+  await page.getByRole('radio', { name: 'A–Z' }).click()
+  const rows = await page.locator('main span.font-mono.font-medium').allInnerTexts()
+  assert(rows[0] === 'echo cairix-rerun-ok', `A–Z should start with echo: ${rows}`)
+  await page.getByRole('radio', { name: 'Most run' }).click()
+})
+
+await step('Commands: one-click re-run shows the output', async () => {
+  await page.getByRole('button', { name: 'Run echo cairix-rerun-ok again' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.waitFor({ timeout: 10_000 })
+  await dialog.getByText('cairix-rerun-ok').last().waitFor({ timeout: 10_000 })
+  await settle(); await page.screenshot({ path: join(shots, '15-command-rerun.png') })
+  await page.getByRole('button', { name: 'Close', exact: true }).last().click()
+})
+
+await step('Commands: a risky command asks before re-running', async () => {
+  const hist = join(fakeHome, '.zsh_history')
+  writeFileSync(hist, readFileSync(hist, 'utf8') + ': 1700000100:0;rm -rf /tmp/cairix-e2e-never\n')
+  const row = page.getByText('rm -rf /tmp/cairix-e2e-never', { exact: true })
+  await row.waitFor({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'Run rm -rf /tmp/cairix-e2e-never again' }).click()
+  await page.getByRole('dialog', { name: 'Run this again?' }).waitFor()
+  await page.getByRole('button', { name: 'Cancel' }).click()
+})
+
+await step('Commands: never-track removes a command, keeps it out, and can be undone', async () => {
+  await page.getByRole('button', { name: 'Never track ls -la' }).click()
+  await page.getByRole('button', { name: /Just this command/ }).click()
+  await page.waitForFunction(() => !document.querySelector('main')?.textContent?.includes('ls -la'), undefined, { timeout: 5000 })
+  const hist = join(fakeHome, '.zsh_history')
+  writeFileSync(hist, readFileSync(hist, 'utf8') + ': 1700000200:0;ls -la\n: 1700000201:0;git status\n')
+  // the new git status is counted (4×) while the ignored ls stays out
+  await page.getByText('4×').first().waitFor({ timeout: 15_000 })
+  assert(!(await page.locator('main').innerText()).includes('ls -la'), 'an ignored command came back')
+  const saved = JSON.parse(readFileSync(join(userData, 'history.json'), 'utf8'))
+  assert(saved.rules.some((r) => r.value === 'ls -la') && !saved.commands.some((c) => c.c === 'ls -la'), 'history.json should hold the rule and no ls -la')
+  await page.getByRole('button', { name: /^Never tracked \(1\)/ }).click()
+  await page.getByRole('button', { name: 'Track again' }).click()
+  await page.getByRole('button', { name: 'Done' }).click()
+})
+
+await step('Processes page lists a background process and stops it safely', async () => {
+  await page.getByRole('complementary', { name: 'Sidebar' }).getByRole('button', { name: /^Processes/ }).click()
+  await page.getByRole('radio', { name: 'All mine' }).click()
+  const row = page.locator('main div.grid', { hasText: 'sleep 601' }).first()
+  await row.waitFor({ timeout: 15_000 })
+  const main = await page.locator('main').innerText()
+  const offending = main.split('\n').filter((l) => l.includes(join(root, 'node_modules/electron')) || l.trim() === 'launchd')
+  assert(offending.length === 0, `Cairix itself (or its helpers) or launchd was listed: ${offending.join(' || ').slice(0, 400)}`)
+  await settle(); await page.screenshot({ path: join(shots, '16-processes.png') })
+  await row.getByRole('button', { name: /^Stop sleep/ }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Stop', exact: true }).click()
+  await page.waitForFunction(() => !document.querySelector('main')?.textContent?.includes('sleep 601'), undefined, { timeout: 10_000 })
+  let alive = true
+  try { process.kill(bgProc.pid, 0) } catch { alive = false }
+  assert(!alive || bgProc.exitCode !== null || bgProc.signalCode !== null, 'the process is still running after Stop')
+})
+
 await step('Python script is detected', async () => {
   await page.getByRole('complementary', { name: 'Sidebar' }).getByText('tools').first().click()
   await page.getByText('hello.py').first().waitFor({ timeout: 5000 })
@@ -298,7 +393,7 @@ await step('Audit: shows the plan and ceiling first, then runs and lists results
   await page.getByRole('radio', { name: 'Audit' }).click()
   const plan = page.getByText(/Will analyse/)
   await plan.waitFor({ timeout: 10_000 })
-  assert(/never more than \$0\.15/.test(await plan.innerText()), `plan should state the cost ceiling: ${await plan.innerText()}`)
+  assert(/never more than\s*≈?\$0\.15/.test(await plan.innerText()), `plan should state the cost ceiling: ${await plan.innerText()}`)
   await settle(); await page.screenshot({ path: join(shots, '16-audit-plan.png') })
   await page.getByRole('button', { name: 'Run audit' }).click()
   const list = page.getByRole('list', { name: 'Audit findings' })
@@ -368,7 +463,7 @@ await step('Actions: invalid templates are explained, valid ones are saved, conf
 
 await step('Dashboard: pin a script, add widgets, reorder by drag and by keyboard, and it persists', async () => {
   const side = page.getByRole('complementary', { name: 'Sidebar' })
-  const widgetTitles = async () => (await page.locator('main section[aria-label]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label'))))
+  const widgetTitles = async () => (await page.locator('main section[aria-label]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')).filter((t) => t !== 'Getting started')))
   // pin from the Scripts tab
   await side.getByText('web-app').first().click()
   await page.getByRole('tab', { name: 'Scripts' }).click()
@@ -391,10 +486,10 @@ await step('Dashboard: pin a script, add widgets, reorder by drag and by keyboar
 
   // drag "Agents" before "Overview"
   await page.locator('section[aria-label="Agents"]').dragTo(page.locator('section[aria-label="Overview"]'))
-  await page.waitForFunction(() => document.querySelector('main section[aria-label]')?.getAttribute('aria-label') === 'Agents')
+  await page.waitForFunction(() => [...document.querySelectorAll('main section[aria-label]')].map((e) => e.getAttribute('aria-label')).filter((t) => t !== 'Getting started')[0] === 'Agents')
   // keyboard: move Agents down one place
   await page.getByRole('button', { name: 'Move Agents down' }).click()
-  await page.waitForFunction(() => [...document.querySelectorAll('main section[aria-label]')].map((e) => e.getAttribute('aria-label')).slice(0, 2).join() === 'Overview,Agents')
+  await page.waitForFunction(() => [...document.querySelectorAll('main section[aria-label]')].map((e) => e.getAttribute('aria-label')).filter((t) => t !== 'Getting started').slice(0, 2).join() === 'Overview,Agents')
   // resize + remove
   await page.getByRole('button', { name: 'Make Pinned scripts full width' }).click()
   await page.getByRole('button', { name: 'Remove Listening now' }).click()
@@ -572,8 +667,14 @@ await step('Tasks: a read-only task answers; an edit task works in a copy, then 
   await page.getByRole('radio', { name: 'Tasks' }).click()
   const box = page.getByLabel('Task for the agent')
   const tasks = page.getByRole('list', { name: 'Tasks' })
+  // The composer closes once a task starts; reopen it when it is hidden.
+  const openComposer = async () => {
+    if (!(await box.isVisible())) await page.getByRole('button', { name: /^New task/ }).click()
+    await box.waitFor()
+  }
 
   // read-only
+  await openComposer()
   await box.fill('Explain how this project works')
   await page.getByRole('button', { name: 'Start task' }).click()
   const first = tasks.getByRole('listitem').filter({ hasText: 'Explain how this project works' })
@@ -583,6 +684,7 @@ await step('Tasks: a read-only task answers; an edit task works in a copy, then 
 
   // edit
   const agentNote = join(fixture, 'web-app/agent-note.txt')
+  await openComposer()
   await page.getByRole('radio', { name: 'Make changes' }).click()
   await box.fill('ADD A FILE with a note')
   await page.getByRole('button', { name: 'Start task' }).click()
@@ -659,6 +761,7 @@ await step('quitting Cairix leaves no server behind', async () => {
   assert(!(await canConnect(PORT)), 'dev server survived app quit')
 })
 agentProc.kill()
+bgProc.kill()
 rmSync(fixture, { recursive: true, force: true })
 rmSync(userData, { recursive: true, force: true })
 rmSync(fakeHome, { recursive: true, force: true })
