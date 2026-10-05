@@ -4,7 +4,7 @@
  * (main/modules/index.ts); this file is the single list both agree on, and
  * what the Settings screen renders for enabling/disabling.
  */
-export type ModuleScope = 'project' | 'machine'
+export type ModuleScope = 'project' | 'machine' | 'learn'
 export type ModuleStatus = 'ready' | 'planned'
 
 export interface ModuleManifest {
@@ -21,6 +21,30 @@ export const MODULES: ModuleManifest[] = [
     id: 'scripts',
     title: 'Scripts',
     description: 'One-click package.json, Python, Make and Compose scripts for every project.',
+    scope: 'project',
+    status: 'ready',
+    defaultEnabled: true
+  },
+  {
+    id: 'env',
+    title: 'Env',
+    description: 'View and edit a project\'s .env files, compare them with .env.example, and spot secrets that are not git-ignored.',
+    scope: 'project',
+    status: 'ready',
+    defaultEnabled: true
+  },
+  {
+    id: 'git',
+    title: 'Git',
+    description: 'Branches, ahead/behind, stash, commit and push, and the pull request and checks for the current branch.',
+    scope: 'project',
+    status: 'ready',
+    defaultEnabled: true
+  },
+  {
+    id: 'health',
+    title: 'Health',
+    description: 'Wrong Node/Python/package-manager versions, outdated and vulnerable dependencies, and folders eating disk space.',
     scope: 'project',
     status: 'ready',
     defaultEnabled: true
@@ -69,6 +93,38 @@ export const MODULES: ModuleManifest[] = [
     id: 'processes',
     title: 'Processes',
     description: 'Background processes running on your Mac, with memory and CPU, and a safe way to close them.',
+    scope: 'machine',
+    status: 'ready',
+    defaultEnabled: true
+  },
+  {
+    id: 'keymap',
+    title: 'Keymap',
+    description: 'Keyboard shortcuts for your operating system: the system, text editing, Finder, browser, terminal and code editor.',
+    scope: 'learn',
+    status: 'ready',
+    defaultEnabled: true
+  },
+  {
+    id: 'learn',
+    title: 'Daily learn',
+    description: 'A short lesson each day, written by Claude, on the topics and level you choose in Settings.',
+    scope: 'learn',
+    status: 'ready',
+    defaultEnabled: true
+  },
+  {
+    id: 'containers',
+    title: 'Containers',
+    description: 'Docker containers on this Mac, grouped by Compose project: start, stop, restart and read logs.',
+    scope: 'machine',
+    status: 'ready',
+    defaultEnabled: true
+  },
+  {
+    id: 'schedules',
+    title: 'Schedules',
+    description: 'Run a script or an agent task every few minutes, at a time of day, or when a branch changes.',
     scope: 'machine',
     status: 'ready',
     defaultEnabled: true

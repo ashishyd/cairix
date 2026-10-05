@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { comboProblem } from './keybindings'
+import { DEFAULT_LEARN, LEVELS, MAX_TOPICS, MAX_TOPIC_LENGTH } from './learn'
 import { DEFAULT_ONBOARDING } from './onboarding'
 import { ACCENTS, DEFAULT_NOTIFICATIONS, DEFAULT_SETTINGS, type Settings } from './settings-types'
 
@@ -21,6 +22,12 @@ const notificationsSchema = z.object({
   audits: z.boolean()
 })
 
+const learnSchema = z.object({
+  topics: z.array(z.string().min(1).max(MAX_TOPIC_LENGTH)).max(MAX_TOPICS),
+  level: z.enum(LEVELS),
+  autoGenerate: z.boolean()
+})
+
 /** Field validators, without defaults: shared by the full schema and the patch schema. */
 const fields = {
   theme: z.enum(['system', 'light', 'dark']),
@@ -34,9 +41,12 @@ const fields = {
   reviewWithAi: z.boolean(),
   dashboard: z.array(z.object({ id: z.string().max(40), type: z.string().max(40), size: z.enum(['half', 'full']) })).max(24),
   pinnedScripts: z.array(z.string().max(200)).max(50),
+  autoRestartScripts: z.array(z.string().max(200)).max(100),
+  launchAtLogin: z.boolean(),
   keybindings: z.record(z.string().max(80), z.string().max(40).refine((v) => v === '' || comboProblem(v) === null, 'Not a usable shortcut')).refine((r) => Object.keys(r).length <= 200),
   onboarding: onboardingSchema,
-  notifications: notificationsSchema
+  notifications: notificationsSchema,
+  learn: learnSchema
 }
 
 /**
@@ -56,10 +66,13 @@ export const settingsSchema = z.object({
   reviewWithAi: fields.reviewWithAi.default(DEFAULT_SETTINGS.reviewWithAi),
   dashboard: fields.dashboard.default(DEFAULT_SETTINGS.dashboard),
   pinnedScripts: fields.pinnedScripts.default(DEFAULT_SETTINGS.pinnedScripts),
+  autoRestartScripts: fields.autoRestartScripts.default(DEFAULT_SETTINGS.autoRestartScripts),
+  launchAtLogin: fields.launchAtLogin.default(DEFAULT_SETTINGS.launchAtLogin),
   // Lenient on read: one bad hand-edited shortcut must not throw away every other setting. The patch schema stays strict.
   keybindings: z.record(z.string().max(80), z.string().max(40)).default(DEFAULT_SETTINGS.keybindings),
   onboarding: onboardingSchema.default(DEFAULT_ONBOARDING).catch(DEFAULT_ONBOARDING),
-  notifications: notificationsSchema.default(DEFAULT_NOTIFICATIONS).catch(DEFAULT_NOTIFICATIONS)
+  notifications: notificationsSchema.default(DEFAULT_NOTIFICATIONS).catch(DEFAULT_NOTIFICATIONS),
+  learn: learnSchema.default(DEFAULT_LEARN).catch(DEFAULT_LEARN)
 })
 
 /**
@@ -69,7 +82,7 @@ export const settingsSchema = z.object({
  * Onboarding accepts a partial object; main merges it into the stored flags.
  */
 export const settingsPatchSchema = z
-  .object({ ...fields, onboarding: onboardingSchema.partial(), notifications: notificationsSchema.partial() })
+  .object({ ...fields, onboarding: onboardingSchema.partial(), notifications: notificationsSchema.partial(), learn: learnSchema.partial() })
   .partial()
   .strict()
 

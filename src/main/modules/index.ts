@@ -23,6 +23,7 @@ import { AuditService } from './audit/service'
 import { registerChangesHandlers } from './changes/handlers'
 import { ChangesService } from './changes/service'
 import { detectCli } from './agents/service'
+import { parseArgs } from '@shared/args'
 import { findProject, isInsideWorkspace, listWorkspaces } from './projects/store'
 import { registerAgentsHandlers } from './agents/handlers'
 import { AgentsService } from './agents/service'
@@ -32,6 +33,20 @@ import { registerRunsHandlers } from './runs/handlers'
 import { RunHistoryStore } from './runs/store'
 import { registerAppHandlers } from './app/handlers'
 import { runCommand } from './ports/exec'
+import { registerGitHandlers } from './git/handlers'
+import { GitService } from './git/service'
+import { registerHealthHandlers } from './health/handlers'
+import { HealthService } from './health/service'
+import { registerContainersHandlers } from './containers/handlers'
+import { ContainersService } from './containers/service'
+import { registerSchedulesHandlers } from './schedules/handlers'
+import { Scheduler } from './schedules/service'
+import { ScheduleStore } from './schedules/store'
+import { registerLearnHandlers } from './learn/handlers'
+import { LearnService } from './learn/service'
+import { LearnStore } from './learn/store'
+import { registerEnvHandlers } from './env/handlers'
+import { EnvService } from './env/service'
 import { registerHistoryHandlers } from './history/handlers'
 import { HistoryService } from './history/service'
 import { registerProcessesHandlers } from './processes/handlers'
@@ -40,7 +55,10 @@ import { registerPortsHandlers } from './ports/handlers'
 import { PortsService } from './ports/service'
 import { registerProjectsHandlers } from './projects/handlers'
 import { resolveProjectForCwd } from './projects/store'
-import { registerScriptsHandlers } from './scripts/handlers'
+import { registerScriptsHandlers, scriptExists, startScriptById } from './scripts/handlers'
+import { ScriptConfigStore } from './scripts/config'
+import { Supervisor } from './scripts/supervisor'
+import { RunWatcher, watchFolder } from './scripts/watcher'
 import { ScriptRunner } from './scripts/runner'
 
 /**
@@ -70,12 +88,50 @@ export function registerModules(): Modules {
   const notifier = createNotifier()
   const runHistory = new RunHistoryStore(app.getPath('userData'), (records) => broadcast(IPC.runsChanged, records))
 
+  const configs = new ScriptConfigStore(app.getPath('userData'), (all) => broadcast(IPC.scriptsConfigsChanged, all))
+
+  const supervisor = new Supervisor({
+    enabled: (scriptId) => getSettings().autoRestartScripts.includes(scriptId),
+    restart: async (info, attempt) => {
+      await startScriptById(runner, info.scriptId, info.args ?? [], attempt, configs.get(info.scriptId)?.env)
+    },
+    onGiveUp: (info, attempts) => notifier.crashLoop(info, attempts),
+    // Test hook, like CAIRIX_HOME: CAIRIX_RESTART_BACKOFF_MS="50,50" shortens the waits.
+    backoff: process.env.CAIRIX_RESTART_BACKOFF_MS?.split(',').map(Number).filter((n) => n >= 0)
+  })
+
+  const watcher = new RunWatcher({
+    folderOf: (info) => findProject(info.projectId)?.project.path,
+    enabled: (scriptId) => !!configs.get(scriptId)?.watch,
+    watch: watchFolder,
+    restart: async (info) => {
+      // Stop the old process group first: the new one often wants the same port.
+      runner.stop(info.runId)
+      for (let i = 0; i < 80; i++) {
+        const cur = runner.get(info.runId)
+        if (!cur || cur.endedAt) break
+        await new Promise((r) => setTimeout(r, 100))
+      }
+      await startScriptById(runner, info.scriptId, info.args ?? [], 0, configs.get(info.scriptId)?.env)
+    },
+    onLoop: (info) => notifier.watchLoop(info)
+  })
+
   const runner = new ScriptRunner({
     onRun: (info) => {
       broadcast(IPC.scriptsRunEvent, info)
       refreshTray()
       // First time we see a run in a final state: keep it, and tell the user if it matters.
-      if (info.endedAt && runHistory.record(info, runner.log(info.runId).text)) notifier.run(info)
+      if (info.endedAt) {
+        if (runHistory.record(info, runner.log(info.runId).text)) {
+          // A crash that is being retried is not news; only report it when nobody is handling it.
+          if (supervisor.onRunEnded(info) === 'ignored') notifier.run(info)
+        }
+        watcher.onRunEnded(info)
+      } else if (info.status === 'running') {
+        supervisor.onRunStarted(info.scriptId)
+        watcher.onRunStarted(info)
+      }
     },
     onOutput: (e) => broadcast(IPC.scriptsOutput, e)
   })
@@ -101,6 +157,8 @@ export function registerModules(): Modules {
     dataDir: app.getPath('userData'),
     // A test or CI home folder can be injected the same way as for Agents.
     home: process.env.CAIRIX_HOME || homedir(),
+    // A fake home must not be undone by the real shell's HISTFILE / ZDOTDIR.
+    env: process.env.CAIRIX_HOME ? {} : process.env,
     isEnabled: () => {
       const m = MODULES.find((x) => x.id === 'history')
       return !!m && isModuleEnabled(m, getSettings().enabledModules)
@@ -169,15 +227,83 @@ export function registerModules(): Modules {
   let lastAgents: Awaited<ReturnType<AgentsService['snapshot']>>['sessions'] = []
   setInterval(() => void agents.snapshot().then((s) => (lastAgents = s.sessions), () => undefined), 5000).unref()
 
+  registerGitHandlers(
+    new GitService({
+      project: (id) => {
+        const f = findProject(id)
+        return f ? { path: f.project.path, trusted: f.workspace.trusted, name: f.workspace.name, hasGit: f.project.hasGit } : undefined
+      }
+    })
+  )
+  registerHealthHandlers(
+    new HealthService({
+      git: (cwd, args) => git(cwd, args),
+      isRunning: (projectId) => runner.list().some((r) => r.projectId === projectId && (r.status === 'running' || r.status === 'stopping')),
+      minKb: process.env.CAIRIX_HOG_MIN_KB ? Number(process.env.CAIRIX_HOG_MIN_KB) : undefined,
+      project: (id) => {
+        const f = findProject(id)
+        return f ? { path: f.project.path, trusted: f.workspace.trusted, name: f.workspace.name, hasGit: f.project.hasGit } : undefined
+      }
+    })
+  )
+  registerContainersHandlers(new ContainersService({ projectForFolder: (path) => resolveProjectForCwd(path) }))
+  const scheduleStore = new ScheduleStore(app.getPath('userData'), () => broadcast(IPC.schedulesChanged, scheduler.list()))
+  const scheduler = new Scheduler(scheduleStore, {
+    tickMs: process.env.CAIRIX_SCHEDULER_TICK_MS ? Number(process.env.CAIRIX_SCHEDULER_TICK_MS) : undefined,
+    isScriptActive: (scriptId) => runner.list().some((r) => r.scriptId === scriptId && (r.status === 'running' || r.status === 'stopping')),
+    startScript: async (scriptId) => {
+      const cfg = configs.get(scriptId)
+      await startScriptById(runner, scriptId, parseArgs(cfg?.args ?? ''), 0, cfg?.env)
+    },
+    startTask: async (t) => {
+      await tasks.start(t.projectId, { agent: t.agent, mode: 'read', prompt: t.prompt, budgetUsd: 0.5 })
+    },
+    headOf: async (projectId) => {
+      const f = findProject(projectId)
+      return f?.project.hasGit ? git(f.project.path, ['rev-parse', 'HEAD']).then((s) => s.trim(), () => undefined) : undefined
+    }
+  })
+  registerSchedulesHandlers(scheduleStore, scheduler, {
+    validateTarget: async (d) => {
+      if (d.target.kind === 'script' && !(await scriptExists(d.target.scriptId))) throw new Error('That script no longer exists.')
+      if (d.target.kind === 'task' && !findProject(d.target.projectId)) throw new Error('That project is no longer in Cairix.')
+      if (d.trigger.kind === 'git-change' && !findProject(d.trigger.projectId)?.project.hasGit) throw new Error('That project is not a git repository.')
+    }
+  })
+  scheduler.start()
+  registerLearnHandlers(
+    new LearnService({
+      store: new LearnStore(app.getPath('userData')),
+      detectClaude: () => detectCli(claudeBin()),
+      onChange: (snapshot) => broadcast(IPC.learnChanged, snapshot)
+    })
+  )
+  registerEnvHandlers(
+    new EnvService({
+      git,
+      project: (id) => {
+        const f = findProject(id)
+        return f ? { path: f.project.path, trusted: f.workspace.trusted, name: f.workspace.name, hasGit: f.project.hasGit } : undefined
+      }
+    })
+  )
+
   registerAppHandlers()
   registerNotifyHandlers(notifier)
   registerRunsHandlers(runHistory)
   registerProjectsHandlers(runner)
-  registerScriptsHandlers(runner)
+  registerScriptsHandlers(runner, configs, { listeners: async () => (await ports.scanFresh()).snapshot.entries })
   registerPortsHandlers(ports)
   registerAgentsHandlers(agents)
   registerProcessesHandlers(processes)
-  registerHistoryHandlers(history, { runner, findProject })
+  registerHistoryHandlers(history, {
+    runner,
+    findProject,
+    projectForFolder: (path) => {
+      const hit = resolveProjectForCwd(path)
+      return hit ? findProject(hit.id) : undefined
+    }
+  })
   registerChangesHandlers(changes)
   registerAuditHandlers(audit, changes)
   registerPluginsHandlers(plugins, broker)
@@ -198,6 +324,9 @@ export function registerModules(): Modules {
     runner,
     ports,
     dispose: () => {
+      supervisor.dispose()
+      scheduler.stop()
+      watcher.dispose()
       tasks.stopAll()
       plugins.stopAll()
       history.stop()

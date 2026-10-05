@@ -33,6 +33,28 @@ export function runNotice(run: RunInfo, projectExists: (id: string) => boolean):
   return null // stopped by you, or finished quickly
 }
 
+/** Auto-restart stopped trying: a crash loop needs a person. */
+export function crashLoopNotice(run: RunInfo, attempts: number, projectExists: (id: string) => boolean): Notice {
+  const base = runNotice({ ...run, status: 'failed' }, projectExists)
+  return {
+    kind: 'runs',
+    title: `${clip(run.scriptName, 60)} keeps crashing`,
+    body: `Auto-restart gave up after ${attempts} tries${run.exitCode != null ? ` (last exit code ${run.exitCode})` : ''}`,
+    target: base?.target ?? { kind: 'machine', page: 'runs' }
+  }
+}
+
+/** Restart-on-change paused itself because the script keeps changing files in its own folder. */
+export function watchLoopNotice(run: RunInfo, projectExists: (id: string) => boolean): Notice {
+  const base = runNotice({ ...run, status: 'failed' }, projectExists)
+  return {
+    kind: 'runs',
+    title: `${clip(run.scriptName, 60)} was restarting too often`,
+    body: 'Restart on file change is paused: the script keeps changing files in its own folder.',
+    target: base?.target ?? { kind: 'machine', page: 'runs' }
+  }
+}
+
 export function taskNotice(task: AgentTask): Notice | null {
   const target: NavigateTarget = { kind: 'project', projectId: task.projectId, tab: 'tasks' }
   if (task.status === 'done') {

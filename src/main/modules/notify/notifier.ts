@@ -1,6 +1,6 @@
 import type { NotificationSettings } from '@shared/settings-types'
 import type { AgentTask, AuditState, NavigateTarget, RunInfo } from '@shared/types'
-import { auditNotice, runNotice, taskNotice, type Notice } from './rules'
+import { auditNotice, crashLoopNotice, runNotice, taskNotice, watchLoopNotice, type Notice } from './rules'
 
 export interface NotifierDeps {
   settings(): NotificationSettings
@@ -19,6 +19,12 @@ export class Notifier {
 
   run(info: RunInfo): void {
     this.send(runNotice(info, this.deps.projectExists))
+  }
+  crashLoop(info: RunInfo, attempts: number): void {
+    this.send(crashLoopNotice(info, attempts, this.deps.projectExists))
+  }
+  watchLoop(info: RunInfo): void {
+    this.send(watchLoopNotice(info, this.deps.projectExists))
   }
   task(task: AgentTask): void {
     this.send(taskNotice(task))

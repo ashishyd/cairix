@@ -22,6 +22,26 @@ if (streaming) {
     line({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Write', input: { file_path: 'agent-note.txt' } }] } })
   }
   line({ type: 'result', subtype: 'success', is_error: false, result: prompt.includes('ADD A FILE') ? 'Added agent-note.txt.' : 'The project is a tiny HTTP server.', total_cost_usd: 0.002 })
+} else if (prompt.includes('LESSON_REQUEST')) {
+  // Daily lesson: echo the topic and level back so tests can see they were honoured.
+  const topic = prompt.match(/^Topic: "(.+)"$/m)?.[1] ?? 'unknown'
+  const level = prompt.match(/^Level: (\w+)\./m)?.[1] ?? 'unknown'
+  const covered = (prompt.match(/Already covered[^\n]*\n((?:- .+\n)+)/)?.[1] ?? '').split('\n').filter(Boolean).length
+  envelope({
+    result: '',
+    structured_output: {
+      title: `${topic}: lesson ${covered + 1} (${level})`,
+      summary: `A short ${level} lesson about ${topic}.`,
+      keyPoints: ['Start small', 'Read the error message', 'Practise daily'],
+      sections: [{ heading: 'The idea', body: `Here is the core idea of ${topic} explained plainly.` }, { heading: 'A common mistake', body: 'Skipping the basics.' }],
+      example: { language: 'bash', code: 'echo "hello from the lesson"', explanation: 'Prints a greeting.' },
+      exercise: `Try one small ${topic} task and write down what surprised you.`,
+      quiz: [
+        { question: 'Which is the best first step?', options: ['Guess', 'Read the docs', 'Give up'], answer: 1, explanation: 'Reading first saves time.' },
+        { question: 'A question with a broken answer index', options: ['a', 'b'], answer: 7, explanation: 'dropped' }
+      ]
+    }
+  })
 } else if (prompt.includes('Fix exactly ONE problem')) {
   // Edit the file named in the prompt, inside the worktree we were started in.
   const file = prompt.match(/^File: (\S+)/m)?.[1]

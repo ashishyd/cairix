@@ -87,7 +87,8 @@ export class ScriptRunner {
     script: ResolvedScript,
     project: Project,
     projectLabel: string,
-    extraArgs: string[]
+    extraArgs: string[],
+    autoRestarts = 0
   ): Promise<RunInfo> {
     const existing = [...this.runs.values()].find(
       (r) => r.info.scriptId === script.def.id && (r.info.status === 'running' || r.info.status === 'stopping')
@@ -117,7 +118,9 @@ export class ScriptRunner {
       pid: child.pid ?? 0,
       startedAt: Date.now(),
       status: 'running',
-      ports: []
+      ports: [],
+      ...(extraArgs.length > 0 ? { args: extraArgs } : {}),
+      ...(autoRestarts > 0 ? { autoRestarts } : {})
     }
     const run: Run = { info, child, log: new LogBuffer(), total: 0, stoppedByUser: false }
     this.runs.set(runId, run)

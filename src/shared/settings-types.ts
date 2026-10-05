@@ -4,6 +4,7 @@
  * the UI bundle. ./settings checks that its zod schema matches these types.
  */
 import { DEFAULT_DASHBOARD, type DashboardItem } from './dashboard'
+import { DEFAULT_LEARN, type LearnSettings } from './learn'
 import { DEFAULT_ONBOARDING, type OnboardingFlags } from './onboarding'
 
 export const ACCENTS = ['blue', 'green', 'amber', 'violet', 'rose', 'slate'] as const
@@ -42,15 +43,22 @@ export interface Settings {
   dashboard: DashboardItem[]
   /** Script ids pinned to the Home dashboard. */
   pinnedScripts: string[]
+  /** Script ids Cairix restarts by itself when they crash. */
+  autoRestartScripts: string[]
+  /** Open Cairix (in the menu bar, without a window) when you log in. */
+  launchAtLogin: boolean
   /** commandId -> combo. '' = unbound, absent = the command's default. */
   keybindings: Record<string, string>
   /** First-run checklist progress (milestones that aren't always inferable). */
   onboarding: OnboardingFlags
   notifications: NotificationSettings
+  /** Daily learning: what to study, and how hard. */
+  learn: LearnSettings
 }
 
 /** Partial update from the UI. Onboarding may be incomplete and is merged server-side. */
-export type SettingsPatch = Omit<Partial<Settings>, 'onboarding' | 'notifications'> & {
+export type SettingsPatch = Omit<Partial<Settings>, 'onboarding' | 'notifications' | 'learn'> & {
+  learn?: Partial<LearnSettings>
   onboarding?: Partial<OnboardingFlags>
   notifications?: Partial<NotificationSettings>
 }
@@ -67,7 +75,10 @@ export const DEFAULT_SETTINGS: Settings = {
   reviewWithAi: false,
   dashboard: DEFAULT_DASHBOARD,
   pinnedScripts: [],
+  autoRestartScripts: [],
+  launchAtLogin: false,
   keybindings: {},
   onboarding: DEFAULT_ONBOARDING,
-  notifications: DEFAULT_NOTIFICATIONS
+  notifications: DEFAULT_NOTIFICATIONS,
+  learn: DEFAULT_LEARN
 }

@@ -63,6 +63,16 @@ export class PortsService {
     return this.running
   }
 
+  /**
+   * A scan that *starts now*. `scanNow` hands out a scan that is already running,
+   * which may have begun before a server started listening a moment ago; anything
+   * deciding "is this port free right now?" must not accept that.
+   */
+  async scanFresh(): Promise<ScanResult> {
+    if (this.running) await this.running.catch(() => undefined)
+    return this.scanNow()
+  }
+
   async kill(req: KillRequest): Promise<KillResult> {
     const signal = req.force ? 'SIGKILL' : 'SIGTERM'
     // Always plan from a fresh scan: the renderer's copy may be stale, and we

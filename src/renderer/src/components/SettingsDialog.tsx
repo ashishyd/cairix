@@ -1,6 +1,7 @@
 import { Check } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { MODULES, isModuleEnabled } from '@shared/modules'
+import { cleanTopic, LEVELS, LEVEL_HINT, LEVEL_LABEL, MAX_TOPICS, TOPIC_GROUPS } from '@shared/learn'
 import { ACCENTS, DEFAULT_SETTINGS, type Accent } from '@shared/settings-types'
 import type { AppInfo } from '@shared/types'
 import { cx, errMsg } from '@/lib/util'
@@ -27,6 +28,61 @@ function Row({ title, hint, children }: { title: string; hint?: string; children
       </div>
       {children}
     </div>
+  )
+}
+
+/** Topics and level for Daily learn. */
+function LearningSettings(): React.JSX.Element {
+  const learn = useSettingsStore((s) => s.settings.learn)
+  const patch = useSettingsStore((s) => s.patch)
+  const [custom, setCustom] = useState('')
+  const suggested = new Set(TOPIC_GROUPS.flatMap((g) => g.topics))
+  const mine = learn.topics.filter((t) => !suggested.has(t))
+  const full = learn.topics.length >= MAX_TOPICS
+
+  const toggle = (t: string): void => void patch({ learn: { topics: learn.topics.includes(t) ? learn.topics.filter((x) => x !== t) : full ? learn.topics : [...learn.topics, t] } })
+  const addCustom = (): void => {
+    const t = cleanTopic(custom)
+    if (!t || learn.topics.some((x) => x.toLowerCase() === t.toLowerCase()) || full) return setCustom('')
+    void patch({ learn: { topics: [...learn.topics, t] } })
+    setCustom('')
+  }
+
+  return (
+    <>
+      <Row title="Topics to learn" hint={`${learn.topics.length} of ${MAX_TOPICS} chosen. One topic is taught each day, in turn.`}>
+        <span />
+      </Row>
+      <div className="space-y-3 px-4 pb-3">
+        {TOPIC_GROUPS.map((g) => (
+          <div key={g.title}>
+            <p className="mb-1 text-sm text-cx-muted">{g.title}</p>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label={g.title}>
+              {g.topics.map((t) => {
+                const on = learn.topics.includes(t)
+                return (
+                  <button key={t} aria-pressed={on} disabled={!on && full} onClick={() => toggle(t)} className={cx('no-drag rounded-full border px-2.5 py-0.5 text-sm disabled:opacity-40', on ? 'border-cx-accent bg-cx-accent/12 text-cx-accent-text' : 'border-cx-border text-cx-muted hover:bg-cx-hover')}>{t}</button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+        <div>
+          <p className="mb-1 text-sm text-cx-muted">Your own</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {mine.map((t) => <button key={t} aria-pressed onClick={() => toggle(t)} title="Remove" className="no-drag rounded-full border border-cx-accent bg-cx-accent/12 px-2.5 py-0.5 text-sm text-cx-accent-text">{t} ×</button>)}
+            <input value={custom} onChange={(e) => setCustom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addCustom()} placeholder="Add a topic, e.g. Kubernetes" aria-label="Add your own topic" disabled={full} className="no-drag h-7 w-56 rounded-full border border-cx-border bg-cx-raised px-3 text-sm outline-none focus:border-cx-accent disabled:opacity-40" />
+            <Button size="sm" onClick={addCustom} disabled={!custom.trim() || full}>Add</Button>
+          </div>
+        </div>
+      </div>
+      <Row title="Difficulty" hint={LEVEL_HINT[learn.level]}>
+        <Segmented value={learn.level} onChange={(level) => void patch({ learn: { level } })} options={LEVELS.map((l) => ({ value: l, label: LEVEL_LABEL[l] }))} />
+      </Row>
+      <Row title="Write today's lesson automatically" hint="When you open Daily learn and there is no lesson yet. Each lesson uses a little of your Claude plan.">
+        <Toggle checked={learn.autoGenerate} onChange={(autoGenerate) => void patch({ learn: { autoGenerate } })} label="Write today's lesson automatically" />
+      </Row>
+    </>
   )
 }
 
@@ -127,6 +183,16 @@ export function SettingsDialog(): React.JSX.Element {
         <Row title="Global shortcut" hint="Opens Cairix and the command palette from anywhere.">
           <HotkeyField value={settings.globalHotkey} onChange={(globalHotkey) => void patch({ globalHotkey })} />
         </Row>
+      </Group>
+
+      <Group title="Startup">
+        <Row title="Open Cairix at login" hint="Starts quietly in the menu bar, without a window. Works in the installed app, not in a dev run.">
+          <Toggle checked={settings.launchAtLogin} onChange={(launchAtLogin) => void patch({ launchAtLogin })} label="Open Cairix at login" />
+        </Row>
+      </Group>
+
+      <Group title="Learning">
+        <LearningSettings />
       </Group>
 
       <Group title="Notifications">

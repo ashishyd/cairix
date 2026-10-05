@@ -3,6 +3,7 @@ import { join } from 'path'
 import { IPC } from '@shared/ipc'
 import { DEFAULT_SETTINGS, settingsSchema, type Settings, type SettingsPatch } from '@shared/settings'
 import { readJson, writeJsonAtomic } from './json-store'
+import { applyLaunchAtLogin } from './login'
 
 let current: Settings | null = null
 const listeners = new Set<(s: Settings) => void>()
@@ -17,6 +18,7 @@ export function getSettings(): Settings {
 /** Applies the parts of settings that live in Electron itself (not in CSS). */
 export function applyNativeSettings(s: Settings): void {
   nativeTheme.themeSource = s.theme
+  applyLaunchAtLogin(s.launchAtLogin, { isPackaged: app.isPackaged, set: (o) => app.setLoginItemSettings(o) })
 }
 
 export function updateSettings(patch: SettingsPatch): Settings {
@@ -30,7 +32,8 @@ export function updateSettings(patch: SettingsPatch): Settings {
     enabledModules: { ...prev.enabledModules, ...(patch.enabledModules ?? {}) },
     // Same for onboarding milestones — a partial patch must not clear other flags.
     onboarding: { ...prev.onboarding, ...(patch.onboarding ?? {}) },
-    notifications: { ...prev.notifications, ...(patch.notifications ?? {}) }
+    notifications: { ...prev.notifications, ...(patch.notifications ?? {}) },
+    learn: { ...prev.learn, ...(patch.learn ?? {}) }
   }
   const next = settingsSchema.parse(merged)
   current = next

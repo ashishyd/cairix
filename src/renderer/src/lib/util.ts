@@ -29,16 +29,7 @@ export function formatUptime(sec: number): string {
   return `${d}d ${h % 24}h`
 }
 
-/**
- * Splits "--port 4000 --name 'my app'" into argv. Understands single and
- * double quotes; no shell expansion, because args are passed without a shell.
- */
-export function parseArgs(input: string): string[] {
-  const out: string[] = []
-  const re = /"([^"]*)"|'([^']*)'|(\S+)/g
-  for (let m = re.exec(input); m; m = re.exec(input)) out.push(m[1] ?? m[2] ?? m[3])
-  return out
-}
+export { parseArgs } from '@shared/args'
 
 /** Tiny fuzzy matcher: substring hits rank highest; otherwise subsequence match. (From Vaultic.) */
 export function fuzzyScore(text: string, query: string): number {

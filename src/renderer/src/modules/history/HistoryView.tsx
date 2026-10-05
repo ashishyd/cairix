@@ -1,8 +1,8 @@
-import { Ban, Copy, Play, Search, SquareTerminal, TriangleAlert } from 'lucide-react'
+import { Ban, Copy, FolderOpen, Play, Search, SquareTerminal, TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { HistoryEntry, HistoryRule } from '@shared/types'
 import { Button, Chip, Dialog, EmptyState, IconButton, Segmented } from '@/components/ui'
-import { timeAgo } from '@/lib/util'
+import { errMsg, timeAgo } from '@/lib/util'
 import { projectLabel, useProjectsStore } from '@/stores/projects-store'
 import { useHistoryStore } from '@/stores/history-store'
 import { toast } from '@/stores/toast-store'
@@ -87,7 +87,43 @@ function RiskyDialog({ entry, onConfirm, onClose }: { entry: HistoryEntry; onCon
   )
 }
 
-function Row({ e, onRun, onForget }: { e: HistoryEntry; onRun: () => void; onForget: () => void }): React.JSX.Element {
+type Place = { id: string; label: string; path: string }
+
+/** The project a folder belongs to: the most specific one that contains it. */
+export function placeFor(path: string, places: Place[]): Place | undefined {
+  let best: Place | undefined
+  for (const p of places) if ((path === p.path || path.startsWith(p.path + '/')) && (!best || p.path.length > best.path.length)) best = p
+  return best
+}
+
+function HookDialog({ rcFile, snippet, onClose }: { rcFile: string; snippet: string; onClose: () => void }): React.JSX.Element {
+  const [busy, setBusy] = useState(false)
+  async function enable(): Promise<void> {
+    setBusy(true)
+    try {
+      await window.cairix.history.installHook()
+      toast.success('Folder tracking is on. Open a new terminal tab to start.')
+      onClose()
+    } catch (e) {
+      toast.error(errMsg(e))
+      setBusy(false)
+    }
+  }
+  return (
+    <Dialog title="Record which folder commands run in" onClose={onClose} width={560} footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" busy={busy} onClick={() => void enable()}>Add to .zshrc</Button></>}>
+      <p className="mb-3 text-cx-muted">Shell history does not say where a command ran. This adds a small zsh hook that notes the folder before each command, so Cairix can show it, filter by project, and re-run a command where it belongs.</p>
+      <p className="mb-1.5 text-sm text-cx-muted">Cairix will add exactly this to <span className="font-mono">{rcFile.replace(/^\/Users\/[^/]+/, '~')}</span> (a backup is kept as <span className="font-mono">.zshrc.cairix-backup</span>):</p>
+      <pre className="selectable overflow-x-auto whitespace-pre-wrap rounded-lg border border-cx-border bg-cx-surface p-3 font-mono text-xs">{snippet}</pre>
+      <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-cx-muted">
+        <li>Only new terminal tabs are affected. A command that starts with a space is never recorded.</li>
+        <li>Commands with passwords or tokens are dropped, as before. Everything stays on this Mac.</li>
+        <li>You can turn it off here at any time; that removes the block.</li>
+      </ul>
+    </Dialog>
+  )
+}
+
+function Row({ e, onRun, onForget, place }: { e: HistoryEntry; onRun: () => void; onForget: () => void; place?: Place }): React.JSX.Element {
   async function copy(): Promise<void> {
     try {
       await navigator.clipboard.writeText(e.command)
@@ -104,6 +140,9 @@ function Row({ e, onRun, onForget }: { e: HistoryEntry; onRun: () => void; onFor
           <span className="selectable truncate font-mono text-sm font-medium" title={e.command}>{e.command}</span>
           {e.risky && <Chip tone="warning" title="Asks before re-running">careful</Chip>}
           {e.interactive && <Chip title="Needs a real terminal: re-runs in Terminal.app"><SquareTerminal size={10} /> terminal</Chip>}
+          {e.folders.length > 0 && (
+            <Chip title={`Run in:\n${e.folders.map((f) => `${f.path} (${f.count}×)`).join('\n')}`}><FolderOpen size={10} /> {place ? place.label : e.folders[0].path.split('/').pop() || '/'}{e.folders.length > 1 ? ` +${e.folders.length - 1}` : ''}</Chip>
+          )}
         </span>
         <span className="mt-0.5 block truncate text-sm text-cx-muted" title={e.description}>{e.description}</span>
       </span>
@@ -125,21 +164,34 @@ export function HistoryView(): React.JSX.Element {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState<Sort>('count')
   const [shown, setShown] = useState(PAGE)
-  const [where, setWhere] = useState('')
+  const [where, setWhere] = useState('auto')
+  const [inProject, setInProject] = useState('')
+  const [hookOpen, setHookOpen] = useState(false)
   const [forgetting, setForgetting] = useState<HistoryEntry | null>(null)
   const [confirming, setConfirming] = useState<HistoryEntry | null>(null)
   const [showRules, setShowRules] = useState(false)
 
   const entries = snapshot?.entries ?? []
   const sorted = useMemo(() => [...entries].sort(SORTS[sort]), [entries, sort])
-  const filtered = useMemo(() => sorted.filter((e) => matchesQuery(e, query)), [sorted, query])
-  const runs = useMemo(() => entries.reduce((a, e) => a + e.count, 0), [entries])
   const places = useMemo(
-    () => workspaces.filter((w) => w.trusted).flatMap((w) => w.projects.map((p) => ({ id: p.id, label: projectLabel({ project: p, workspace: w }) }))),
+    (): Place[] => workspaces.filter((w) => w.trusted).flatMap((w) => w.projects.map((p) => ({ id: p.id, label: projectLabel({ project: p, workspace: w }), path: p.path }))),
     [workspaces]
   )
+  const scope = places.find((p) => p.id === inProject)
+  const filtered = useMemo(
+    () => sorted.filter((e) => matchesQuery(e, query) && (!scope || e.folders.some((f) => f.path === scope.path || f.path.startsWith(scope.path + '/')))),
+    [sorted, query, scope]
+  )
+  const runs = useMemo(() => entries.reduce((a, e) => a + e.count, 0), [entries])
 
-  const run = (e: HistoryEntry, confirmed = false): void => void rerun(e.id, e.command, { projectId: where || undefined, confirmed })
+  /** Where a re-run happens: where it was seen (if that is inside a trusted project), your choice, or home. */
+  const target = (e: HistoryEntry): { projectId?: string; folder?: string } => {
+    if (where === 'home') return {}
+    if (where !== 'auto') return { projectId: where }
+    const seen = e.folders.find((f) => placeFor(f.path, places))
+    return seen ? { folder: seen.path } : {}
+  }
+  const run = (e: HistoryEntry, confirmed = false): void => void rerun(e.id, e.command, { ...target(e), confirmed })
   const start = (e: HistoryEntry): void => (e.risky ? setConfirming(e) : run(e))
   const rules = snapshot?.rules ?? []
   const foundAny = snapshot?.sources.some((s) => s.found) ?? false
@@ -166,14 +218,43 @@ export function HistoryView(): React.JSX.Element {
       <div className="mb-3 flex items-center gap-2 text-sm text-cx-muted">
         <label htmlFor="rerun-where">Re-run in</label>
         <select id="rerun-where" value={where} onChange={(e) => setWhere(e.target.value)} className="no-drag h-7 max-w-[260px] rounded-lg border border-cx-border bg-cx-raised px-2 outline-none focus:border-cx-accent">
-          <option value="">Home folder</option>
+          <option value="auto">Where it was run</option>
+          <option value="home">Home folder</option>
           {places.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
         </select>
-        <span className="text-cx-faint">Shell history has no folder, so pick where a re-run happens. Only trusted folders are listed.</span>
+        <span className="text-cx-faint">{snapshot?.hook.recording ? 'Falls back to your home folder when it was run outside your trusted projects.' : 'Turn on folder tracking below to re-run commands where they belong. Until then: home folder.'}</span>
+        {snapshot?.hook.recording && places.length > 0 && (
+          <>
+            <label htmlFor="in-project" className="ml-auto">Only commands run in</label>
+            <select id="in-project" value={inProject} onChange={(e) => setInProject(e.target.value)} className="no-drag h-7 max-w-[200px] rounded-lg border border-cx-border bg-cx-raised px-2 outline-none focus:border-cx-accent">
+              <option value="">Anywhere</option>
+              {places.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+            </select>
+          </>
+        )}
       </div>
 
       {snapshot && !snapshot.tracking && (
         <p className="mb-4 rounded-lg bg-cx-warning/12 p-3 text-cx-warning" role="status">Tracking is off. Turn on “Commands” under Settings → Modules to count new commands.</p>
+      )}
+
+      {snapshot && snapshot.tracking && (
+        snapshot.hook.installed ? (
+          <p className="mb-3 flex flex-wrap items-center gap-2 text-sm text-cx-muted" role="status">
+            <FolderOpen size={14} className="text-cx-success" />
+            {snapshot.hook.recording ? 'Folder tracking is on.' : 'Folder tracking is on. Open a new terminal tab and run a command to start learning folders.'}
+            <button onClick={() => void window.cairix.history.removeHook().catch((e) => toast.error(errMsg(e)))} className="no-drag text-cx-accent-text hover:underline">Turn off</button>
+          </p>
+        ) : (
+          <div className="mb-3 flex items-center gap-3 rounded-xl border border-cx-border bg-cx-raised px-4 py-3">
+            <FolderOpen size={18} className="shrink-0 text-cx-muted" />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium">Know where each command ran</p>
+              <p className="text-sm text-cx-muted">Shell history has no folder. An optional zsh hook adds it, so you can filter by project and re-run commands in the right place.</p>
+            </div>
+            <Button onClick={() => setHookOpen(true)}>Set up…</Button>
+          </div>
+        )
       )}
 
       {filtered.length > 0 ? (
@@ -181,7 +262,7 @@ export function HistoryView(): React.JSX.Element {
           <div className="grid gap-3 border-b border-cx-border bg-cx-surface px-4 py-2 cx-label" style={{ gridTemplateColumns: '56px minmax(0,1fr) 96px 112px' }}>
             <span>Runs</span><span>Command</span><span>Last run</span><span />
           </div>
-          {filtered.slice(0, shown).map((e) => <Row key={e.id} e={e} onRun={() => start(e)} onForget={() => setForgetting(e)} />)}
+          {filtered.slice(0, shown).map((e) => <Row key={e.id} e={e} place={e.folders[0] ? placeFor(e.folders[0].path, places) : undefined} onRun={() => start(e)} onForget={() => setForgetting(e)} />)}
           {filtered.length > shown && (
             <div className="flex justify-center border-t border-cx-border/60 p-3">
               <Button onClick={() => setShown((n) => n + PAGE)}>Show {Math.min(PAGE, filtered.length - shown)} more of {(filtered.length - shown).toLocaleString()}</Button>
@@ -204,6 +285,7 @@ export function HistoryView(): React.JSX.Element {
 
       {forgetting && <NeverTrackDialog entry={forgetting} onClose={() => setForgetting(null)} />}
       {confirming && <RiskyDialog entry={confirming} onClose={() => setConfirming(null)} onConfirm={() => { run(confirming, true); setConfirming(null) }} />}
+      {hookOpen && snapshot && <HookDialog rcFile={snapshot.hook.rcFile} snippet={snapshot.hook.snippet} onClose={() => setHookOpen(false)} />}
       {showRules && <IgnoredDialog rules={rules} onClose={() => setShowRules(false)} />}
     </div>
   )

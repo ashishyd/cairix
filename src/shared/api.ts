@@ -1,4 +1,5 @@
 import type { ContributionKind, PluginInfo, PluginNotification, PluginsListResult, RenderContext, UiNode } from './plugins'
+import type { GenerateLessonRequest, LearnSnapshot, Lesson } from './learn'
 import type { Settings, SettingsPatch } from './settings-types'
 import type {
   ActionContext,
@@ -9,6 +10,18 @@ import type {
   AgentsSnapshot,
   AgentTask,
   AppInfo,
+  ContainerAction,
+  ContainersSnapshot,
+  DepsReport,
+  GitPrResult,
+  GitState,
+  GitStashOp,
+  HealthSnapshot,
+  PortConflict,
+  Schedule,
+  ScheduleDraft,
+  EnvSnapshot,
+  ScriptConfig,
   NavigateTarget,
   RunRecord,
   HistoryRerunRequest,
@@ -83,6 +96,14 @@ export interface CairixAPI {
     log(runId: string): Promise<LogSnapshot>
     onRunEvent(cb: (run: RunInfo) => void): Unsubscribe
     onOutput(cb: (e: RunOutputEvent) => void): Unsubscribe
+    /** Saved arguments, environment and watch setting per script id. */
+    /** Ports the script is about to use that something already holds. Empty means clear to run. */
+    checkPorts(scriptId: string, args?: string[]): Promise<PortConflict[]>
+    /** Opens a file mentioned in a run's output (a stack trace) at its line in an editor. Main checks it is inside the project. */
+    openFile(runId: string, file: string, line?: number, column?: number): Promise<void>
+    configs(): Promise<Record<string, ScriptConfig>>
+    setConfig(scriptId: string, config: ScriptConfig | null): Promise<Record<string, ScriptConfig>>
+    onConfigsChange(cb: (configs: Record<string, ScriptConfig>) => void): Unsubscribe
   }
   ports: {
     scan(): Promise<PortSnapshot>
@@ -164,6 +185,9 @@ export interface CairixAPI {
     /** Stops tracking, and forgets, one command or every command of a program. */
     ignore(rule: HistoryRule): Promise<HistorySnapshot>
     unignore(rule: HistoryRule): Promise<HistorySnapshot>
+    /** Adds Cairix's hook line to ~/.zshrc so commands carry the folder they ran in. Idempotent. */
+    installHook(): Promise<HistorySnapshot>
+    removeHook(): Promise<HistorySnapshot>
     onChange(cb: (snapshot: HistorySnapshot) => void): Unsubscribe
   }
   runs: {
@@ -173,5 +197,61 @@ export interface CairixAPI {
     tail(runId: string): Promise<string>
     clear(): Promise<void>
     onChange(cb: (records: RunRecord[]) => void): Unsubscribe
+  }
+  env: {
+    /** Keys and metadata only. Values never come with the list. */
+    list(projectId: string): Promise<EnvSnapshot>
+    /** One value, on request (the user clicked the eye). */
+    reveal(projectId: string, file: string, key: string): Promise<string>
+    set(projectId: string, file: string, key: string, value: string): Promise<EnvSnapshot>
+    remove(projectId: string, file: string, key: string): Promise<EnvSnapshot>
+    /** Creates `.env` (or another local file) from a template. */
+    create(projectId: string, file: string, template: string): Promise<EnvSnapshot>
+    /** Appends the template's missing keys, empty, to a local file. */
+    addMissing(projectId: string, file: string): Promise<EnvSnapshot>
+  }
+  git: {
+    state(projectId: string): Promise<GitState>
+    checkout(projectId: string, branch: string): Promise<GitState>
+    createBranch(projectId: string, name: string): Promise<GitState>
+    stash(projectId: string, op: GitStashOp, arg?: string): Promise<GitState>
+    /** `all` stages every tracked change first (like commit -a). Nothing is committed with an empty message. */
+    commit(projectId: string, message: string, all: boolean): Promise<GitState>
+    /** Pushes the current branch only; never forces. Sets the upstream the first time. */
+    push(projectId: string): Promise<GitState>
+    /** Fast-forward only, so it can never create a surprise merge. */
+    pull(projectId: string): Promise<GitState>
+    fetch(projectId: string): Promise<GitState>
+    /** The pull request for the current branch and its checks, when the GitHub CLI is available. */
+    pr(projectId: string): Promise<GitPrResult>
+  }
+  containers: {
+    list(): Promise<ContainersSnapshot>
+    /** Main re-checks the id against the container list before acting. */
+    action(id: string, action: ContainerAction): Promise<ContainersSnapshot>
+    logs(id: string, tail?: number): Promise<string>
+  }
+  health: {
+    /** Tool versions against what the project asks for, and the folders using the most disk. */
+    scan(projectId: string): Promise<HealthSnapshot>
+    /** Outdated and vulnerable dependencies. Uses the network, so only on request. */
+    deps(projectId: string): Promise<DepsReport>
+    /** Deletes one regenerable folder (node_modules, .next, ...) that git does not track. */
+    clean(projectId: string, folder: string): Promise<HealthSnapshot>
+  }
+  schedules: {
+    list(): Promise<Schedule[]>
+    save(draft: ScheduleDraft): Promise<Schedule>
+    delete(id: string): Promise<void>
+    runNow(id: string): Promise<Schedule>
+    onChange(cb: (schedules: Schedule[]) => void): Unsubscribe
+  }
+  learn: {
+    list(): Promise<LearnSnapshot>
+    /** Writes a lesson with the user's Claude CLI. Returns today's existing one unless `another` is set. */
+    generate(req: GenerateLessonRequest): Promise<Lesson>
+    mark(id: string, learned: boolean): Promise<Lesson>
+    delete(id: string): Promise<void>
+    onChange(cb: (snapshot: LearnSnapshot) => void): Unsubscribe
   }
 }

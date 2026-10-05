@@ -49,7 +49,12 @@ const api: CairixAPI = {
     runs: call(IPC.scriptsRuns),
     log: call(IPC.scriptsLog),
     onRunEvent: (cb) => on(IPC.scriptsRunEvent, cb),
-    onOutput: (cb) => on(IPC.scriptsOutput, cb)
+    onOutput: (cb) => on(IPC.scriptsOutput, cb),
+    checkPorts: call(IPC.scriptsCheckPorts),
+    openFile: call(IPC.scriptsOpenFile),
+    configs: call(IPC.scriptsConfigs),
+    setConfig: call(IPC.scriptsSetConfig),
+    onConfigsChange: (cb) => on(IPC.scriptsConfigsChanged, cb)
   },
   ports: {
     scan: call(IPC.portsScan),
@@ -121,7 +126,52 @@ const api: CairixAPI = {
     rerun: call(IPC.historyRerun),
     ignore: call(IPC.historyIgnore),
     unignore: call(IPC.historyUnignore),
+    installHook: call(IPC.historyHookInstall),
+    removeHook: call(IPC.historyHookRemove),
     onChange: (cb) => on(IPC.historyChanged, cb)
+  },
+  env: {
+    list: call(IPC.envList),
+    reveal: call(IPC.envReveal),
+    set: call(IPC.envSet),
+    remove: call(IPC.envRemove),
+    create: call(IPC.envCreate),
+    addMissing: call(IPC.envAddMissing)
+  },
+  learn: {
+    list: call(IPC.learnList),
+    generate: call(IPC.learnGenerate),
+    mark: call(IPC.learnMark),
+    delete: call(IPC.learnDelete),
+    onChange: (cb) => on(IPC.learnChanged, cb)
+  },
+  git: {
+    state: call(IPC.gitState),
+    checkout: call(IPC.gitCheckout),
+    createBranch: call(IPC.gitCreateBranch),
+    stash: call(IPC.gitStash),
+    commit: call(IPC.gitCommit),
+    push: call(IPC.gitPush),
+    pull: call(IPC.gitPull),
+    fetch: call(IPC.gitFetch),
+    pr: call(IPC.gitPr)
+  },
+  containers: {
+    list: call(IPC.containersList),
+    action: call(IPC.containersAction),
+    logs: call(IPC.containersLogs)
+  },
+  health: {
+    scan: call(IPC.healthScan),
+    deps: call(IPC.healthDeps),
+    clean: call(IPC.healthClean)
+  },
+  schedules: {
+    list: call(IPC.schedulesList),
+    save: call(IPC.schedulesSave),
+    delete: call(IPC.schedulesDelete),
+    runNow: call(IPC.schedulesRunNow),
+    onChange: (cb) => on(IPC.schedulesChanged, cb)
   }
 }
 

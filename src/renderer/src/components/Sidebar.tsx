@@ -8,6 +8,10 @@ import {
   Package,
   Plug,
   Activity,
+  GraduationCap,
+  Keyboard,
+  CalendarClock,
+  Container,
   History,
   SquareTerminal,
   RefreshCw,
@@ -34,7 +38,7 @@ import { useUiStore } from '@/stores/ui-store'
 import { BrandLogo } from './BrandLogo'
 import { IconButton, Kbd, StatusDot } from './ui'
 
-const MACHINE_ICONS: Record<string, LucideIcon> = { ports: Plug, processes: Activity, runs: History, history: SquareTerminal, agents: Bot, actions: Zap, plugins: Puzzle }
+const MACHINE_ICONS: Record<string, LucideIcon> = { ports: Plug, processes: Activity, keymap: Keyboard, learn: GraduationCap, containers: Container, schedules: CalendarClock, runs: History, history: SquareTerminal, agents: Bot, actions: Zap, plugins: Puzzle }
 
 function NavItem({ icon: Icon, label, active, onClick, trailing }: { icon: LucideIcon; label: string; active: boolean; onClick: () => void; trailing?: React.ReactNode }): React.JSX.Element {
   return (
@@ -157,6 +161,7 @@ export function Sidebar(): React.JSX.Element {
 
   const runningIds = useMemo(() => new Set(Object.values(runs).filter(isActive).map((r) => r.projectId)), [runs])
   const machine = MODULES.filter((m) => m.scope === 'machine' && isModuleEnabled(m, enabledModules))
+  const learn = MODULES.filter((m) => m.scope === 'learn' && isModuleEnabled(m, enabledModules))
   const servers = countServers(snapshot)
   const working = busyCount(useAgentsStore((s) => s.snapshot))
 
@@ -196,6 +201,14 @@ export function Sidebar(): React.JSX.Element {
                   ) : undefined
                 }
               />
+            ))}
+          </Section>
+        )}
+
+        {learn.length > 0 && (
+          <Section title="Learn">
+            {learn.map((m) => (
+              <NavItem key={m.id} icon={MACHINE_ICONS[m.id] ?? Terminal} label={m.title} active={view.kind === 'machine' && view.page === m.id} onClick={() => go({ kind: 'machine', page: m.id })} />
             ))}
           </Section>
         )}

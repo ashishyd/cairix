@@ -2,6 +2,7 @@ import { app, globalShortcut, Menu, nativeImage, session } from 'electron'
 import { IPC } from '@shared/ipc'
 import { contentSecurityPolicy } from '@shared/csp'
 import { registerModules, type Modules } from './modules'
+import { shouldShowWindowOnStart } from './login'
 import { getLoginEnv } from './shell-env'
 import { applyNativeSettings, getSettings, onSettingsChange } from './settings'
 import { createTray, resourcePath } from './tray'
@@ -72,7 +73,7 @@ if (!app.requestSingleInstanceLock()) {
 
     void getLoginEnv() // warm the cache (takes ~2 s with nvm); the first script run shouldn't pay for it
     modules = registerModules()
-    createMainWindow({ vibrancy: settings.vibrancy })
+    createMainWindow({ vibrancy: settings.vibrancy, showOnReady: shouldShowWindowOnStart(app.getLoginItemSettings()) })
     createTray(showMainWindow)
     registerHotkey(settings.globalHotkey)
 

@@ -1,7 +1,8 @@
-import { Pin, PinOff, ChevronDown, ChevronRight, ExternalLink, Play, RotateCw, ShieldAlert, Square, Terminal as TerminalIcon, TriangleAlert, X } from 'lucide-react'
+import { Pin, PinOff, ChevronDown, ChevronRight, ExternalLink, Play, FolderSync, Repeat, RotateCw, ShieldAlert, Square, Terminal as TerminalIcon, TriangleAlert, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { PortEntry, RunInfo, ScriptCategory, ScriptDef } from '@shared/types'
-import { Button, Chip, EmptyState, IconButton, StatusDot } from '@/components/ui'
+import type { PortConflict, PortEntry, RunInfo, ScriptCategory, ScriptDef } from '@shared/types'
+import { Button, Chip, Dialog, EmptyState, IconButton, StatusDot } from '@/components/ui'
+import { formatEnvLines, parseEnvLines } from '@shared/args'
 import { cx, errMsg, formatKb, parseArgs } from '@/lib/util'
 import type { ProjectTabProps } from '@/modules/registry'
 import { usePortsStore } from '@/stores/ports-store'
@@ -56,8 +57,19 @@ function ScriptRow({
   const { run: start, stop } = useScriptsStore()
   const setKillTarget = useUiStore((s) => s.setKillTarget)
   const pinned = useSettingsStore((st) => st.settings.pinnedScripts.includes(script.id))
+  const autoRestart = useSettingsStore((st) => st.settings.autoRestartScripts.includes(script.id))
   const patchSettings = useSettingsStore((st) => st.patch)
-  const [argText, setArgText] = useState('')
+  const cfg = useScriptsStore((st) => st.configs[script.id])
+  const saveConfig = useScriptsStore((st) => st.saveConfig)
+  const watching = !!cfg?.watch
+  const [argText, setArgText] = useState(cfg?.args ?? '')
+  const [envText, setEnvText] = useState(formatEnvLines(cfg?.env ?? {}))
+  // Saved defaults load after the first render and change when saved; show what is stored.
+  const savedArgs = cfg?.args ?? ''
+  const savedEnv = formatEnvLines(cfg?.env ?? {})
+  useEffect(() => setArgText(savedArgs), [savedArgs])
+  useEffect(() => setEnvText(savedEnv), [savedEnv])
+  const dirty = argText.trim() !== savedArgs || envText.trim() !== savedEnv
   const [argsOpen, setArgsOpen] = useState(false)
   const active = !!run && isActive(run)
   const mine = run ? entries.filter((e) => e.runId === run.runId) : []
@@ -66,9 +78,39 @@ function ScriptRow({
   const conflictPort = run?.portConflict
   const conflictEntry = usePortsStore((s) => (conflictPort ? s.snapshot?.entries.find((e) => e.port === conflictPort) : undefined))
 
-  async function go(): Promise<void> {
-    const r = await start(script.id, parseArgs(argText))
+  const [conflicts, setConflicts] = useState<PortConflict[] | null>(null)
+  const [freeing, setFreeing] = useState(false)
+
+  /** Starts the script, first checking that the port it will use is free (skipped when we just freed it). */
+  async function go(skipCheck = false): Promise<void> {
+    const args = parseArgs(argText)
+    if (skipCheck !== true) {
+      try {
+        const clash = await window.cairix.scripts.checkPorts(script.id, args)
+        if (clash.length > 0) return setConflicts(clash)
+      } catch {
+        /* the check is advice; never let it stop a run */
+      }
+    }
+    const r = await start(script.id, args)
     if (r) onSelect(r.runId)
+  }
+
+  async function stopHoldersAndRun(): Promise<void> {
+    if (!conflicts) return
+    setFreeing(true)
+    try {
+      for (const c of conflicts) {
+        const r = await window.cairix.ports.kill({ pid: c.pid })
+        if (!r.ok) throw new Error(r.stillAlive.length > 0 ? `${c.holder} did not stop. Use the Ports page to force quit it.` : (r.error ?? `Could not stop ${c.holder}.`))
+      }
+      setConflicts(null)
+      await go(true)
+    } catch (e) {
+      toast.error(errMsg(e))
+    } finally {
+      setFreeing(false)
+    }
   }
 
   async function restart(): Promise<void> {
@@ -82,8 +124,18 @@ function ScriptRow({
         if (!cur || !isActive(cur)) (clearTimeout(t), unsub(), resolve(true))
       })
     })
-    if (gone) await go()
+    if (gone) await go(true)
     else toast.error('The old process did not exit in time. Stop it from the Ports page.')
+  }
+
+  async function saveDefaults(): Promise<void> {
+    let env: Record<string, string>
+    try {
+      env = parseEnvLines(envText)
+    } catch (e) {
+      return void toast.error(errMsg(e))
+    }
+    if (await saveConfig(script.id, { args: argText.trim(), env, watch: watching })) toast.success(`Saved defaults for ${script.name}`)
   }
 
   async function openTerminal(): Promise<void> {
@@ -106,6 +158,10 @@ function ScriptRow({
             {run && <StatusDot tone={active ? 'success' : run.status === 'failed' ? 'danger' : 'muted'} pulse={active} />}
             <span className="truncate font-mono text-base font-medium">{script.name}</span>
             {run && runStatusChip(run)}
+            {run?.autoRestarts ? <Chip tone="warning" title="Cairix restarted this after a crash">auto-restarted ×{run.autoRestarts}</Chip> : null}
+            {autoRestart && !run?.autoRestarts && <Chip title="Restarts by itself if it crashes">auto-restart</Chip>}
+            {watching && <Chip title="Restarts when files in this project change">watching</Chip>}
+            {(savedArgs || savedEnv) && <Chip title={savedEnv ? 'Has saved arguments or environment variables' : 'Has saved arguments'}>defaults</Chip>}
             {script.needsTty && <Chip tone="warning" title="Probably asks questions, so it works best in a real terminal">interactive</Chip>}
           </div>
           <p className="mt-0.5 truncate pl-0 font-mono text-xs text-cx-faint" title={script.command}>{script.command}</p>
@@ -125,6 +181,23 @@ function ScriptRow({
         <Chip className="hidden xl:inline-flex">{SOURCE_LABEL[script.source]}</Chip>
 
         <div className="flex items-center gap-1">
+          <IconButton
+            icon={FolderSync}
+            label={watching ? 'Stop restarting when files change' : 'Restart when files change'}
+            aria-pressed={watching}
+            onClick={() => void saveConfig(script.id, { args: savedArgs, env: cfg?.env ?? {}, watch: !watching })}
+            className={watching ? 'bg-cx-accent/12 text-cx-accent-text' : undefined}
+          />
+          <IconButton
+            icon={Repeat}
+            label={autoRestart ? 'Turn off auto-restart' : 'Restart automatically if it crashes'}
+            aria-pressed={autoRestart}
+            onClick={() => {
+              const cur = useSettingsStore.getState().settings.autoRestartScripts
+              void patchSettings({ autoRestartScripts: autoRestart ? cur.filter((x) => x !== script.id) : [...cur, script.id] })
+            }}
+            className={autoRestart ? 'bg-cx-accent/12 text-cx-accent-text' : undefined}
+          />
           <IconButton
             icon={pinned ? PinOff : Pin}
             label={pinned ? 'Unpin from Home' : 'Pin to Home'}
@@ -162,17 +235,62 @@ function ScriptRow({
       </div>
 
       {argsOpen && (
-        <div className="flex items-center gap-2 px-4 pb-3 pl-11 animate-fade">
-          <span className="text-sm text-cx-muted">Extra arguments</span>
-          <input
-            value={argText}
-            onChange={(e) => setArgText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !active && trusted && void go()}
-            placeholder="--port 4000"
-            aria-label={`Arguments for ${script.name}`}
-            className="no-drag h-7 w-72 rounded-md border border-cx-border bg-cx-raised px-2 font-mono text-sm outline-none focus:border-cx-accent"
-          />
+        <div className="space-y-2 px-4 pb-3 pl-11 animate-fade">
+          <div className="flex items-center gap-2">
+            <span className="w-[130px] text-sm text-cx-muted">Extra arguments</span>
+            <input
+              value={argText}
+              onChange={(e) => setArgText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !active && trusted && void go()}
+              placeholder="--port 4000"
+              aria-label={`Arguments for ${script.name}`}
+              className="no-drag h-7 w-72 rounded-md border border-cx-border bg-cx-raised px-2 font-mono text-sm outline-none focus:border-cx-accent"
+            />
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="w-[130px] pt-1 text-sm text-cx-muted">Environment</span>
+            <textarea
+              value={envText}
+              onChange={(e) => setEnvText(e.target.value)}
+              rows={Math.min(6, Math.max(2, envText.split('\n').length))}
+              spellCheck={false}
+              placeholder={'PORT=4000\nDEBUG=app:*'}
+              aria-label={`Environment variables for ${script.name}`}
+              className="no-drag w-72 resize-none rounded-md border border-cx-border bg-cx-raised px-2 py-1 font-mono text-sm outline-none focus:border-cx-accent"
+            />
+            <div className="flex flex-col gap-1.5 pt-0.5">
+              <Button size="sm" variant="primary" disabled={!dirty} onClick={() => void saveDefaults()}>Save as default</Button>
+              {(savedArgs || savedEnv) && <Button size="sm" variant="ghost" onClick={() => void saveConfig(script.id, watching ? { args: '', env: {}, watch: true } : null)}>Clear defaults</Button>}
+            </div>
+          </div>
+          <p className="pl-[138px] text-xs text-cx-faint">Used when you press Run, and by shortcuts and the Home dashboard. Added to the script's environment only. Stored on this Mac; keep real secrets in a .env file.</p>
         </div>
+      )}
+
+      {conflicts && (
+        <Dialog
+          title={conflicts.length === 1 ? `Port ${conflicts[0].port} is already in use` : 'Ports are already in use'}
+          onClose={() => setConflicts(null)}
+          width={500}
+          footer={
+            <>
+              <Button onClick={() => setConflicts(null)} disabled={freeing}>Cancel</Button>
+              <Button onClick={() => { setConflicts(null); void go(true) }} disabled={freeing}>Run anyway</Button>
+              {conflicts.every((c) => !c.protected) && <Button variant="primary" busy={freeing} onClick={() => void stopHoldersAndRun()}>Stop it and run</Button>}
+            </>
+          }
+        >
+          <p className="mb-3 text-cx-muted"><span className="font-mono font-medium text-cx-text">{script.name}</span> will probably use {conflicts.length === 1 ? 'this port' : 'these ports'}, and something is already listening:</p>
+          <ul className="space-y-2">
+            {conflicts.map((c) => (
+              <li key={c.port} className="rounded-lg border border-cx-border px-3 py-2">
+                <p><span className="font-mono font-semibold">:{c.port}</span> held by <span className="font-medium">{c.holder}</span>{c.framework && c.framework !== c.holder ? ` (${c.framework})` : ''}{c.projectName ? <> from <span className="font-medium">{c.projectName}</span></> : null}</p>
+                <p className="text-sm text-cx-faint">Expected because of {c.why}{c.protected ? ' · protected, Cairix will not stop it' : ''}</p>
+                {c.hint && <p className="mt-1 text-sm text-cx-warning">{c.hint}</p>}
+              </li>
+            ))}
+          </ul>
+        </Dialog>
       )}
 
       {run?.portConflict && !active && (

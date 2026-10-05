@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { RunInfo } from '@shared/types'
+import type { RunInfo, ScriptConfig } from '@shared/types'
 import { errMsg } from '@/lib/util'
 import { useSettingsStore } from './settings-store'
 import { toast } from './toast-store'
@@ -7,7 +7,11 @@ import { toast } from './toast-store'
 interface ScriptsState {
   /** Every known run, newest data wins. */
   runs: Record<string, RunInfo>
+  /** Saved arguments, environment and watch setting, by script id. */
+  configs: Record<string, ScriptConfig>
   load(): Promise<void>
+  /** Saves (or with null clears) a script's defaults. Resolves to whether it worked. */
+  saveConfig(scriptId: string, config: ScriptConfig | null): Promise<boolean>
   run(scriptId: string, args?: string[]): Promise<RunInfo | undefined>
   stop(runId: string, force?: boolean): Promise<void>
 }
@@ -16,9 +20,21 @@ export const isActive = (r: RunInfo): boolean => r.status === 'running' || r.sta
 
 export const useScriptsStore = create<ScriptsState>((set) => ({
   runs: {},
+  configs: {},
+  saveConfig: async (scriptId, config) => {
+    try {
+      set({ configs: await window.cairix.scripts.setConfig(scriptId, config) })
+      return true
+    } catch (e) {
+      toast.error(errMsg(e))
+      return false
+    }
+  },
   load: async () => {
     const list = await window.cairix.scripts.runs()
     set({ runs: Object.fromEntries(list.map((r) => [r.runId, r])) })
+    set({ configs: await window.cairix.scripts.configs() })
+    window.cairix.scripts.onConfigsChange((configs) => set({ configs }))
     window.cairix.scripts.onRunEvent((run) => set((s) => ({ runs: { ...s.runs, [run.runId]: run } })))
   },
   run: async (scriptId, args) => {

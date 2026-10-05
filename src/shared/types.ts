@@ -92,6 +92,10 @@ export interface RunInfo {
   ports: number[]
   /** Set when logs mention EADDRINUSE: lets the UI offer "free the port and retry". */
   portConflict?: number
+  /** Extra arguments the user passed, kept so an automatic restart runs the same thing. */
+  args?: string[]
+  /** How many times in a row Cairix restarted this script after a crash (0 or absent: started by you). */
+  autoRestarts?: number
 }
 
 export interface RunScriptRequest {
@@ -516,6 +520,8 @@ export interface HistoryEntry {
   risky: boolean
   /** Needs a real terminal (editors, ssh, REPLs): re-runs in Terminal.app. */
   interactive: boolean
+  /** Folders it was run in, most used first. Empty until the shell hook has seen it. */
+  folders: Array<{ path: string; count: number }>
 }
 
 /** "Never track" rule: one exact command, or every command of one program. */
@@ -531,12 +537,27 @@ export interface HistorySnapshot {
   sources: Array<{ path: string; found: boolean }>
   /** False when the History module is switched off in Settings. */
   tracking: boolean
+  /** The optional zsh hook that records which folder each command ran in. */
+  hook: HistoryHookStatus
+}
+
+export interface HistoryHookStatus {
+  /** Cairix's line is present in ~/.zshrc. */
+  installed: boolean
+  /** The hook has reported at least one command, so folders are being learned. */
+  recording: boolean
+  /** The file the line is added to, for display. */
+  rcFile: string
+  /** What gets added, shown before the user agrees. */
+  snippet: string
 }
 
 export interface HistoryRerunRequest {
   id: string
   /** Run inside this project's folder instead of the home folder (must be a trusted folder). */
   projectId?: string
+  /** One of the folders this command was seen in (checked by main; must be inside a trusted folder). */
+  folder?: string
   /** The user confirmed a risky command. */
   confirmed?: boolean
 }
@@ -571,3 +592,242 @@ export interface RunsSnapshot {
 
 /** Where a notification click should land. */
 export type NavigateTarget = { kind: 'project'; projectId: string; tab: string } | { kind: 'machine'; page: string }
+
+// ───────────────────────── Environment files ─────────────────────────
+
+export interface EnvVarInfo {
+  key: string
+  /** Value is empty: set in the template but not filled in here. */
+  empty: boolean
+  length: number
+  /** The name suggests a secret (token, key, password...). */
+  sensitive: boolean
+  /** The value itself, only when it is short, harmless and not secret-looking (a port, a mode). */
+  preview?: string
+}
+
+export interface EnvFileInfo {
+  name: string
+  /** `.env.example` style files are templates: safe to commit, no real values. */
+  kind: 'local' | 'template'
+  vars: EnvVarInfo[]
+  /** null when the project is not a git repository. */
+  gitignored: boolean | null
+  /** A local file that git tracks: its secrets are in the repository history. */
+  tracked: boolean
+  /** Keys the template has that this file lacks or leaves empty. */
+  missing: string[]
+  /** Keys this file has that the template does not know about. */
+  extra: string[]
+  /** The template this was compared with. */
+  template?: string
+}
+
+export interface EnvSnapshot {
+  files: EnvFileInfo[]
+  hasGit: boolean
+}
+
+// ───────────────────────── Per-script settings ─────────────────────────
+
+export interface ScriptConfig {
+  /** Default extra arguments, as typed. */
+  args: string
+  /** Environment variables added for this script only. */
+  env: Record<string, string>
+  /** Restart it when files in the project change. */
+  watch: boolean
+}
+
+// ───────────────────────── Git ─────────────────────────
+
+export interface GitBranch {
+  name: string
+  current: boolean
+  upstream?: string
+  ahead: number
+  behind: number
+  /** Relative time of the last commit, e.g. "3 days ago". */
+  when?: string
+  subject?: string
+}
+
+export interface GitStash {
+  index: number
+  message: string
+}
+
+export interface GitCommitInfo {
+  hash: string
+  subject: string
+  author: string
+  when: string
+}
+
+export interface GitState {
+  /** Current branch, or null on a detached HEAD. */
+  branch: string | null
+  /** Short hash when detached. */
+  detached?: string
+  upstream?: string
+  ahead: number
+  behind: number
+  staged: number
+  changed: number
+  untracked: number
+  conflicted: number
+  hasCommits: boolean
+  /** Name of the first remote, if any. */
+  remote?: string
+  branches: GitBranch[]
+  stashes: GitStash[]
+  recent: GitCommitInfo[]
+}
+
+export interface GitPullRequest {
+  number: number
+  title: string
+  url: string
+  state: string
+  isDraft: boolean
+  checks: { passed: number; failed: number; pending: number }
+  review?: string
+}
+
+export interface GitPrResult {
+  /** The GitHub CLI is installed and signed in. */
+  available: boolean
+  reason?: string
+  pr?: GitPullRequest
+}
+
+export type GitStashOp = 'push' | 'pop' | 'drop'
+
+// ───────────────────────── Containers ─────────────────────────
+
+export interface ContainerInfo {
+  id: string
+  name: string
+  image: string
+  /** running, exited, paused, restarting, created, dead */
+  state: string
+  /** Human status, e.g. "Up 3 hours". */
+  status: string
+  ports: string
+  composeProject?: string
+  composeService?: string
+  /** Folder the Compose file lives in, when Docker knows it. */
+  workingDir?: string
+  projectId?: string
+  projectName?: string
+}
+
+export interface ContainersSnapshot {
+  at: number
+  /** Docker is installed and its daemon answers. */
+  available: boolean
+  reason?: string
+  containers: ContainerInfo[]
+}
+
+export type ContainerAction = 'start' | 'stop' | 'restart'
+
+// ───────────────────────── Project health ─────────────────────────
+
+export interface ToolCheck {
+  tool: string
+  /** What the project asks for, e.g. "20" or ">=18". */
+  wanted: string
+  /** Where that requirement is written, e.g. ".nvmrc". */
+  source: string
+  /** What is installed, if it could be found. */
+  actual?: string
+  /** null when it could not be decided. */
+  ok: boolean | null
+  hint?: string
+}
+
+export interface DiskHog {
+  /** Folder name inside the project, e.g. "node_modules". */
+  name: string
+  sizeKb: number
+  /** What makes it again, e.g. "pnpm install". */
+  regenerate: string
+}
+
+export interface HealthSnapshot {
+  tools: ToolCheck[]
+  hogs: DiskHog[]
+  manager?: 'npm' | 'pnpm' | 'yarn' | 'bun'
+}
+
+export interface OutdatedDep {
+  name: string
+  current: string
+  wanted: string
+  latest: string
+  type: string
+  /** The latest version is a new major release. */
+  major: boolean
+}
+
+export interface VulnSummary {
+  total: number
+  critical: number
+  high: number
+  moderate: number
+  low: number
+  top: Array<{ name: string; severity: string; title?: string }>
+}
+
+export interface DepsReport {
+  manager: string
+  outdated: OutdatedDep[]
+  vulns?: VulnSummary
+  /** Why the vulnerability check could not run (the outdated list may still be fine). */
+  vulnError?: string
+  error?: string
+  ranAt: number
+}
+
+// ───────────────────────── Schedules ─────────────────────────
+
+export type ScheduleTrigger =
+  | { kind: 'every'; minutes: number }
+  | { kind: 'daily'; /** "HH:MM", 24 h, local time */ time: string; /** 0 = Sunday ... 6 = Saturday; empty = every day */ days: number[] }
+  | { kind: 'git-change'; projectId: string }
+
+export type ScheduleTarget =
+  | { kind: 'script'; scriptId: string; label: string }
+  | { kind: 'task'; projectId: string; prompt: string; agent: TaskAgent }
+
+export interface Schedule {
+  id: string
+  name: string
+  enabled: boolean
+  trigger: ScheduleTrigger
+  target: ScheduleTarget
+  lastRunAt?: number
+  lastStatus?: 'started' | 'skipped' | 'failed'
+  lastMessage?: string
+  createdAt: number
+  /** Filled in when listing: when it will next fire (time-based triggers). */
+  nextRunAt?: number
+}
+
+export type ScheduleDraft = Omit<Schedule, 'id' | 'createdAt' | 'lastRunAt' | 'lastStatus' | 'lastMessage' | 'nextRunAt'> & { id?: string }
+
+// ───────────────────────── Script helpers ─────────────────────────
+
+/** A port a script is about to use that something else already holds. */
+export interface PortConflict {
+  port: number
+  pid: number
+  holder: string
+  framework?: string
+  projectName?: string
+  protected: boolean
+  hint?: string
+  /** How we knew the script would use it, e.g. "--port 3000". */
+  why: string
+}

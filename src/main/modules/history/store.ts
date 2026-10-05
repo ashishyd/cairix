@@ -5,10 +5,12 @@ import { redactCommand } from '@shared/redact'
 import type { HistoryEntry, HistoryRule } from '@shared/types'
 import { readJson, writeJsonAtomic } from '../../json-store'
 import { describeCommand, isInteractive, isRisky, programOf } from './describe'
+import type { HookEntry } from './hook'
 import type { ParsedCommand } from './parse'
 
 const MAX_COMMANDS = 5000
 const MAX_LENGTH = 2000
+const MAX_FOLDERS_PER_COMMAND = 5
 
 const record = z.object({ c: z.string().max(MAX_LENGTH), n: z.number().int().positive(), f: z.number(), l: z.number() })
 const file = z.object({
@@ -16,7 +18,9 @@ const file = z.object({
   /** Per history file: where we stopped reading, so only new lines are counted. */
   sources: z.record(z.string(), z.object({ offset: z.number().int().nonnegative(), ino: z.number() })),
   commands: z.array(record),
-  rules: z.array(z.object({ kind: z.enum(['command', 'program']), value: z.string().max(MAX_LENGTH) }))
+  rules: z.array(z.object({ kind: z.enum(['command', 'program']), value: z.string().max(MAX_LENGTH) })),
+  /** command -> folder -> times run there. */
+  folders: z.record(z.string(), z.record(z.string(), z.number().int().positive())).default({})
 })
 type Data = z.infer<typeof file>
 type SourceState = Data['sources'][string]
@@ -43,7 +47,7 @@ export function isIgnored(command: string, rules: HistoryRule[]): boolean {
   return rules.some((r) => (r.kind === 'command' ? r.value === c : r.value === prog))
 }
 
-function toEntry(r: { c: string; n: number; f: number; l: number }): HistoryEntry {
+function toEntry(r: { c: string; n: number; f: number; l: number }, folders: Record<string, number> = {}): HistoryEntry {
   return {
     id: entryId(r.c),
     command: r.c,
@@ -53,7 +57,8 @@ function toEntry(r: { c: string; n: number; f: number; l: number }): HistoryEntr
     program: programOf(r.c),
     description: describeCommand(r.c),
     risky: isRisky(r.c),
-    interactive: isInteractive(r.c)
+    interactive: isInteractive(r.c),
+    folders: Object.entries(folders).map(([path, count]) => ({ path, count })).sort((a, b) => b.count - a.count || a.path.localeCompare(b.path))
   }
 }
 
@@ -65,16 +70,18 @@ function toEntry(r: { c: string; n: number; f: number; l: number }): HistoryEntr
 export class HistoryStore {
   private commands = new Map<string, { c: string; n: number; f: number; l: number }>()
   private rules: HistoryRule[] = []
+  private folders = new Map<string, Record<string, number>>()
   private sources: Record<string, SourceState> = {}
   private readonly path: string
   private dirty = false
 
   constructor(dir: string) {
     this.path = join(dir, 'history.json')
-    const data = readJson(this.path, file, () => ({ version: 1 as const, sources: {}, commands: [], rules: [] }))
+    const data = readJson(this.path, file, () => ({ version: 1 as const, sources: {}, commands: [], rules: [], folders: {} }))
     this.rules = data.rules
     this.sources = data.sources
     for (const r of data.commands) this.commands.set(r.c, r)
+    for (const [c, f] of Object.entries(data.folders)) this.folders.set(c, f)
   }
 
   getRules(): HistoryRule[] {
@@ -112,11 +119,32 @@ export class HistoryStore {
     return recorded
   }
 
+  /** Counts where commands ran, from the shell hook. Skips anything the history would skip. */
+  ingestFolders(entries: HookEntry[]): number {
+    let n = 0
+    for (const e of entries) {
+      const command = e.command.trim()
+      if (skipReason(command, this.rules)) continue
+      const f = this.folders.get(command) ?? {}
+      f[e.cwd] = (f[e.cwd] ?? 0) + 1
+      const keep = Object.entries(f).sort((a, b) => b[1] - a[1]).slice(0, MAX_FOLDERS_PER_COMMAND)
+      this.folders.set(command, Object.fromEntries(keep))
+      n++
+    }
+    if (n > 0) this.dirty = true
+    return n
+  }
+
+  hasFolderData(): boolean {
+    return this.folders.size > 0
+  }
+
   /** Adds a rule and forgets everything it now covers. */
   addRule(rule: HistoryRule): void {
     if (!rule.value.trim() || this.rules.some((r) => r.kind === rule.kind && r.value === rule.value)) return
     this.rules = [...this.rules, rule]
     for (const c of [...this.commands.keys()]) if (isIgnored(c, [rule])) this.commands.delete(c)
+    for (const c of [...this.folders.keys()]) if (isIgnored(c, [rule])) this.folders.delete(c)
     this.dirty = true
   }
 
@@ -132,19 +160,21 @@ export class HistoryStore {
   }
 
   entries(): HistoryEntry[] {
-    return [...this.commands.values()].map(toEntry)
+    return [...this.commands.values()].map((r) => toEntry(r, this.folders.get(r.c)))
   }
 
   entry(id: string): HistoryEntry | undefined {
     const command = this.find(id)
-    return command ? toEntry(this.commands.get(command)!) : undefined
+    return command ? toEntry(this.commands.get(command)!, this.folders.get(command)) : undefined
   }
 
   /** Writes to disk if anything changed. Returns true when it did. */
   save(): boolean {
     if (!this.dirty) return false
     this.dirty = false
-    const data: Data = { version: 1, sources: this.sources, commands: [...this.commands.values()], rules: this.rules }
+    // Folder counts for commands that never reached the history (or were pruned) are dropped.
+    for (const c of [...this.folders.keys()]) if (!this.commands.has(c) && this.folders.size > MAX_COMMANDS) this.folders.delete(c)
+    const data: Data = { version: 1, sources: this.sources, commands: [...this.commands.values()], rules: this.rules, folders: Object.fromEntries(this.folders) }
     writeJsonAtomic(this.path, data)
     return true
   }
@@ -153,6 +183,9 @@ export class HistoryStore {
   private prune(): void {
     if (this.commands.size <= MAX_COMMANDS) return
     const sorted = [...this.commands.values()].sort((a, b) => a.n - b.n || a.l - b.l)
-    for (const r of sorted.slice(0, this.commands.size - MAX_COMMANDS)) this.commands.delete(r.c)
+    for (const r of sorted.slice(0, this.commands.size - MAX_COMMANDS)) {
+      this.commands.delete(r.c)
+      this.folders.delete(r.c)
+    }
   }
 }

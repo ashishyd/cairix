@@ -28,7 +28,7 @@ function restoreBounds(): { x?: number; y?: number; width: number; height: numbe
   return visible ? saved : { width: saved.width, height: saved.height }
 }
 
-export function createMainWindow(opts: { vibrancy: boolean }): BrowserWindow {
+export function createMainWindow(opts: { vibrancy: boolean; showOnReady?: boolean }): BrowserWindow {
   const win = new BrowserWindow({
     ...restoreBounds(),
     minWidth: 920,
@@ -50,7 +50,8 @@ export function createMainWindow(opts: { vibrancy: boolean }): BrowserWindow {
   })
   mainWindow = win
 
-  win.once('ready-to-show', () => win.show())
+  // Started as a login item: stay in the menu bar until the user opens us.
+  win.once('ready-to-show', () => opts.showOnReady !== false && win.show())
 
   let saveTimer: NodeJS.Timeout | undefined
   const saveBounds = (): void => {

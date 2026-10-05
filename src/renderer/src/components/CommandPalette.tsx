@@ -103,7 +103,7 @@ export function CommandPalette(): React.JSX.Element {
       })),
       { id: 'g-home', title: 'Go to Home', subtitle: kb('nav.home'), section: 'Go to', icon: House, run: () => go({ kind: 'home' }) }
     ]
-    for (const m of MODULES.filter((x) => x.scope === 'machine' && isModuleEnabled(x, enabled))) {
+    for (const m of MODULES.filter((x) => x.scope !== 'project' && isModuleEnabled(x, enabled))) {
       const icon = RENDERER_MODULES.find((r) => r.id === m.id)?.icon ?? Plug
       const navId = `nav.${m.id}` as const
       out.push({ id: `g-${m.id}`, title: `Go to ${m.title}`, subtitle: kb(navId), section: 'Go to', icon, run: () => go({ kind: 'machine', page: m.id }) })
