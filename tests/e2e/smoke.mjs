@@ -101,6 +101,7 @@ writeFileSync(
     ': 1700000003:0;echo cairix-rerun-ok',
     ': 1700000004:0;echo cairix-rerun-ok',
     ': 1700000005:0;ls -la',
+    ': 1700000007:0;false',
     ': 1700000006:0;curl -H "x" --api-key sk-abcdefghijklmnopqrstuvwxyz https://example.com',
     ''
   ].join('\n')
@@ -338,6 +339,63 @@ await step('Commands: never-track removes a command, keeps it out, and can be un
   await page.getByRole('button', { name: /^Never tracked \(1\)/ }).click()
   await page.getByRole('button', { name: 'Track again' }).click()
   await page.getByRole('button', { name: 'Done' }).click()
+})
+
+await step('Notifications: a failed run raises one, and clicking it opens the Runs page', async () => {
+  // Capture what Electron would show instead of posting real notifications.
+  await app.evaluate(({ Notification }) => {
+    globalThis.__notes = []
+    Notification.prototype.show = function () { globalThis.__notes.push({ title: this.title, body: this.body, n: this }) }
+  })
+  // Window focus is not reliable under automation: make the test independent of it.
+  await page.evaluate(() => window.cairix.settings.set({ notifications: { onlyInBackground: false } }))
+  await page.getByRole('complementary', { name: 'Sidebar' }).getByRole('button', { name: /^Commands/ }).click()
+  await page.getByRole('button', { name: 'Run false again' }).click()
+  await page.waitForFunction(() => true)
+  let notes = []
+  for (let i = 0; i < 100 && notes.length === 0; i++) {
+    notes = await app.evaluate(() => globalThis.__notes.map((x) => ({ title: x.title, body: x.body })))
+    if (notes.length === 0) await new Promise((r) => setTimeout(r, 100))
+  }
+  assert(notes.length === 1, `expected one notification, got ${JSON.stringify(notes)}`)
+  assert(notes[0].title === 'false failed' && /exit code 1/.test(notes[0].body), `wrong notification: ${JSON.stringify(notes[0])}`)
+  await page.getByRole('button', { name: 'Close', exact: true }).last().click()
+  await app.evaluate(() => globalThis.__notes[0].n.emit('click'))
+  await page.getByRole('heading', { name: 'Runs', exact: true }).waitFor({ timeout: 5000 })
+})
+
+await step('Notifications: off means silent, and a quiet success is not news', async () => {
+  const count = () => app.evaluate(() => globalThis.__notes.length)
+  await page.evaluate(() => window.cairix.settings.set({ notifications: { runs: false } }))
+  await page.getByRole('complementary', { name: 'Sidebar' }).getByRole('button', { name: /^Commands/ }).click()
+  await page.getByRole('button', { name: 'Run false again' }).click()
+  await page.getByRole('button', { name: 'Close', exact: true }).last().click()
+  await new Promise((r) => setTimeout(r, 1500))
+  assert((await count()) === 1, 'a notification was shown with the Scripts category switched off')
+  await page.evaluate(() => window.cairix.settings.set({ notifications: { runs: true } }))
+  await page.getByRole('button', { name: 'Run echo cairix-rerun-ok again' }).click()
+  await page.getByRole('button', { name: 'Close', exact: true }).last().click()
+  await new Promise((r) => setTimeout(r, 1500))
+  assert((await count()) === 1, 'a quick successful run should not notify')
+})
+
+await step('Runs page keeps finished runs with status, duration and output, and survives a restart of the list', async () => {
+  await (page.getByRole('complementary', { name: 'Sidebar' }).getByRole('button', { name: /^Runs/ }).click()).catch((e) => { throw new Error('L1: ' + e.message.split('\n')[0]) })
+  await (page.getByText('Failed · 1').first().waitFor({ timeout: 5000 })).catch((e) => { throw new Error('L2: ' + e.message.split('\n')[0]) })
+  await (page.locator('main span', { hasText: /^Stopped$/ }).first().waitFor()).catch((e) => { throw new Error('L3: ' + e.message.split('\n')[0]) })
+  const main = await page.locator('main').innerText()
+  assert(/serve/.test(main), 'the earlier dev-server run is missing')
+  await (page.locator('button[aria-expanded]').filter({ hasText: 'false' }).first().click()).catch((e) => { throw new Error('L6: ' + e.message.split('\n')[0]) })
+  await (page.getByText('[exited with code 1]').waitFor({ timeout: 5000 })).catch((e) => { throw new Error('L7: ' + e.message.split('\n')[0]) })
+  await settle(); await page.screenshot({ path: join(shots, '17-runs.png') })
+  await page.getByRole('combobox', { name: 'Status' }).selectOption('failed')
+  assert((await page.locator('main span', { hasText: /^Succeeded$/ }).count()) === 0, 'status filter should hide successful runs')
+  assert((await page.locator('main span', { hasText: /^Failed/ }).count()) >= 1, 'status filter should keep failed runs')
+  await page.getByRole('combobox', { name: 'Status' }).selectOption('all')
+  await (page.getByRole('radio', { name: 'By script' }).click()).catch((e) => { throw new Error('L13: ' + e.message.split('\n')[0]) })
+  await (page.getByText('% ').first().waitFor()).catch((e) => { throw new Error('L14: ' + e.message.split('\n')[0]) })
+  const saved = JSON.parse(readFileSync(join(userData, 'run-history.json'), 'utf8'))
+  assert(saved.runs.length >= 3 && saved.runs.some((r) => r.status === 'failed'), 'run-history.json should hold the finished runs')
 })
 
 await step('Processes page lists a background process and stops it safely', async () => {

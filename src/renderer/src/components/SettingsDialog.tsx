@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react'
 import { MODULES, isModuleEnabled } from '@shared/modules'
 import { ACCENTS, DEFAULT_SETTINGS, type Accent } from '@shared/settings-types'
 import type { AppInfo } from '@shared/types'
-import { cx } from '@/lib/util'
+import { cx, errMsg } from '@/lib/util'
 import { useSettingsStore } from '@/stores/settings-store'
+import { toast } from '@/stores/toast-store'
 import { useUiStore } from '@/stores/ui-store'
 import { Button, Chip, Dialog, Segmented, Toggle } from './ui'
 
@@ -125,6 +126,27 @@ export function SettingsDialog(): React.JSX.Element {
         </Row>
         <Row title="Global shortcut" hint="Opens Cairix and the command palette from anywhere.">
           <HotkeyField value={settings.globalHotkey} onChange={(globalHotkey) => void patch({ globalHotkey })} />
+        </Row>
+      </Group>
+
+      <Group title="Notifications">
+        <Row title="Notify me" hint="A macOS notification when a script fails or a long one finishes, and when an agent task or audit completes. Clicking it opens the right page.">
+          <Toggle checked={settings.notifications.enabled} onChange={(enabled) => void patch({ notifications: { enabled } })} label="Notify me" />
+        </Row>
+        <Row title="Only when Cairix is in the background" hint="Stay quiet while a Cairix window is focused.">
+          <Toggle checked={settings.notifications.onlyInBackground} disabled={!settings.notifications.enabled} onChange={(onlyInBackground) => void patch({ notifications: { onlyInBackground } })} label="Only when Cairix is in the background" />
+        </Row>
+        <Row title="Scripts and servers" hint="Failures, and runs that take 15 seconds or more.">
+          <Toggle checked={settings.notifications.runs} disabled={!settings.notifications.enabled} onChange={(runs) => void patch({ notifications: { runs } })} label="Notify for scripts and servers" />
+        </Row>
+        <Row title="Agent tasks">
+          <Toggle checked={settings.notifications.tasks} disabled={!settings.notifications.enabled} onChange={(tasks) => void patch({ notifications: { tasks } })} label="Notify for agent tasks" />
+        </Row>
+        <Row title="Audits">
+          <Toggle checked={settings.notifications.audits} disabled={!settings.notifications.enabled} onChange={(audits) => void patch({ notifications: { audits } })} label="Notify for audits" />
+        </Row>
+        <Row title="Check that it works" hint="macOS may ask permission the first time. Allow it in System Settings → Notifications if you miss them.">
+          <Button size="sm" onClick={() => void window.cairix.app.testNotification().then((ok) => (ok ? toast.success('Sent') : toast.error('Notifications are not available here.')), (e) => toast.error(errMsg(e)))}>Send a test</Button>
         </Row>
       </Group>
 

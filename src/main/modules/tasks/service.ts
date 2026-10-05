@@ -37,6 +37,8 @@ export interface TasksDeps {
   bins?: { claude?: string; cursor?: string }
   maxConcurrent?: number
   timeoutMs?: number
+  /** Called once a task has reached a final state (done, failed or cancelled). */
+  onFinish?(task: AgentTask): void
 }
 
 export interface Command {
@@ -210,6 +212,7 @@ export class TasksService {
     } finally {
       t.endedAt = Date.now()
       this.save()
+      this.deps.onFinish?.({ ...t })
     }
   }
 

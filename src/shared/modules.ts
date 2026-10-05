@@ -74,6 +74,14 @@ export const MODULES: ModuleManifest[] = [
     defaultEnabled: true
   },
   {
+    id: 'runs',
+    title: 'Runs',
+    description: 'Every script run, kept across restarts: status, duration, output, and how reliable each script is.',
+    scope: 'machine',
+    status: 'ready',
+    defaultEnabled: true
+  },
+  {
     id: 'history',
     title: 'Commands',
     description: 'Commands you run in any terminal: how often, what they do, one-click re-run, and a never-track list.',

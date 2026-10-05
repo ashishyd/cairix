@@ -9,6 +9,21 @@ import { DEFAULT_ONBOARDING, type OnboardingFlags } from './onboarding'
 export const ACCENTS = ['blue', 'green', 'amber', 'violet', 'rose', 'slate'] as const
 export type Accent = (typeof ACCENTS)[number]
 
+/** Which finished jobs may raise a macOS notification. */
+export interface NotificationSettings {
+  enabled: boolean
+  /** Stay quiet while a Cairix window is focused (you can already see it). */
+  onlyInBackground: boolean
+  /** Scripts and servers: failures, and long runs that finish. */
+  runs: boolean
+  /** Agent tasks finishing or failing. */
+  tasks: boolean
+  /** Audits finishing or failing. */
+  audits: boolean
+}
+
+export const DEFAULT_NOTIFICATIONS: NotificationSettings = { enabled: true, onlyInBackground: true, runs: true, tasks: true, audits: true }
+
 export interface Settings {
   theme: 'system' | 'light' | 'dark'
   accent: Accent
@@ -31,11 +46,13 @@ export interface Settings {
   keybindings: Record<string, string>
   /** First-run checklist progress (milestones that aren't always inferable). */
   onboarding: OnboardingFlags
+  notifications: NotificationSettings
 }
 
 /** Partial update from the UI. Onboarding may be incomplete and is merged server-side. */
-export type SettingsPatch = Omit<Partial<Settings>, 'onboarding'> & {
+export type SettingsPatch = Omit<Partial<Settings>, 'onboarding' | 'notifications'> & {
   onboarding?: Partial<OnboardingFlags>
+  notifications?: Partial<NotificationSettings>
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -51,5 +68,6 @@ export const DEFAULT_SETTINGS: Settings = {
   dashboard: DEFAULT_DASHBOARD,
   pinnedScripts: [],
   keybindings: {},
-  onboarding: DEFAULT_ONBOARDING
+  onboarding: DEFAULT_ONBOARDING,
+  notifications: DEFAULT_NOTIFICATIONS
 }

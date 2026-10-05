@@ -547,3 +547,27 @@ export interface HistoryRerunResult {
   /** Present when it was handed to Terminal.app. */
   message?: string
 }
+
+// ───────────────────────── Run history ─────────────────────────
+
+/** A finished script run, kept across restarts. */
+export interface RunRecord {
+  runId: string
+  scriptId: string
+  projectId: string
+  projectName: string
+  scriptName: string
+  command: string
+  startedAt: number
+  endedAt: number
+  durationMs: number
+  status: Exclude<RunStatus, 'running' | 'stopping'>
+  exitCode?: number | null
+}
+
+export interface RunsSnapshot {
+  records: RunRecord[]
+}
+
+/** Where a notification click should land. */
+export type NavigateTarget = { kind: 'project'; projectId: string; tab: string } | { kind: 'machine'; page: string }

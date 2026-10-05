@@ -46,6 +46,14 @@ export const IPC = {
   processesWatch: 'processes:watch',
   processesChanged: 'processes:changed',
 
+  runsList: 'runs:list',
+  runsTail: 'runs:tail',
+  runsClear: 'runs:clear',
+  runsChanged: 'runs:changed',
+
+  notifyTest: 'notify:test',
+  uiNavigate: 'ui:navigate',
+
   historyList: 'history:list',
   historyRerun: 'history:rerun',
   historyIgnore: 'history:ignore',

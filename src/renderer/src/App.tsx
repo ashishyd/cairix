@@ -18,6 +18,7 @@ import { useActionsStore } from './stores/actions-store'
 import { usePluginsStore } from './stores/plugins-store'
 import { useAgentsStore } from './stores/agents-store'
 import { useHistoryStore } from './stores/history-store'
+import { useRunsStore } from './stores/runs-store'
 import { useProcessesStore } from './stores/processes-store'
 import { usePortsStore } from './stores/ports-store'
 import { findProjectIn, projectLabel, useProjectsStore } from './stores/projects-store'
@@ -104,9 +105,16 @@ export default function App(): React.JSX.Element {
       useAgentsStore.getState().load(),
       useActionsStore.getState().load(),
       useHistoryStore.getState().load(),
+      useRunsStore.getState().load(),
       usePluginsStore.getState().load()
     ]).catch((e) => toast.error(`Could not start: ${errMsg(e)}`))
-    return window.cairix.app.onOpenPalette(() => useUiStore.getState().setPalette(true))
+    const offPalette = window.cairix.app.onOpenPalette(() => useUiStore.getState().setPalette(true))
+    // Clicking a notification lands on whatever it was about.
+    const offNavigate = window.cairix.app.onNavigate((target) => useUiStore.getState().go(target))
+    return () => {
+      offPalette()
+      offNavigate()
+    }
   }, [])
 
   // Settings that are pure CSS are applied as attributes on <html>.

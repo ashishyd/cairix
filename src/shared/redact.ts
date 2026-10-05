@@ -21,7 +21,7 @@ const FLAG_EQUALS = new RegExp(`(${SECRET_FLAG})=("[^"]*"|'[^']*'|\\S+)`, 'gi')
 const FLAG_SPACE = new RegExp(`(${SECRET_FLAG})\\s+("[^"]*"|'[^']*'|[^\\s-]\\S*)`, 'gi')
 
 // `OPENAI_API_KEY=abc` style assignments inside a command line.
-const ENV_ASSIGN = /\b([A-Za-z][A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIALS?))=("[^"]*"|'[^']*'|\S+)/g
+const ENV_ASSIGN = /\b([A-Za-z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIALS?))=("[^"]*"|'[^']*'|\S+)/g
 
 // `scheme://user:password@host`
 // Anchored (no match may start mid-word) and bounded: an unbounded `\w+` here was quadratic on long

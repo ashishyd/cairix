@@ -9,6 +9,8 @@ import type {
   AgentsSnapshot,
   AgentTask,
   AppInfo,
+  NavigateTarget,
+  RunRecord,
   HistoryRerunRequest,
   HistoryRerunResult,
   HistoryRule,
@@ -51,6 +53,10 @@ export interface CairixAPI {
     showInFolder(path: string): Promise<void>
     openInApp(app: ExternalApp, path: string): Promise<void>
     onOpenPalette(cb: () => void): Unsubscribe
+    /** A notification was clicked: go to what it was about. */
+    onNavigate(cb: (target: NavigateTarget) => void): Unsubscribe
+    /** Shows a sample notification so the user can check macOS allows them. Resolves to whether it was shown. */
+    testNotification(): Promise<boolean>
   }
   settings: {
     get(): Promise<Settings>
@@ -159,5 +165,13 @@ export interface CairixAPI {
     ignore(rule: HistoryRule): Promise<HistorySnapshot>
     unignore(rule: HistoryRule): Promise<HistorySnapshot>
     onChange(cb: (snapshot: HistorySnapshot) => void): Unsubscribe
+  }
+  runs: {
+    /** Finished runs, newest first. Persisted across restarts. */
+    list(): Promise<RunRecord[]>
+    /** The last part of a run's output, with secrets masked. */
+    tail(runId: string): Promise<string>
+    clear(): Promise<void>
+    onChange(cb: (records: RunRecord[]) => void): Unsubscribe
   }
 }

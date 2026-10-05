@@ -1,4 +1,4 @@
-import { Puzzle, Bot, Sparkles, Zap, GitCompare, Play, Plug, ScanSearch, Activity, SquareTerminal, type LucideIcon } from 'lucide-react'
+import { Puzzle, Bot, Sparkles, Zap, GitCompare, Play, Plug, ScanSearch, Activity, SquareTerminal, History, type LucideIcon } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { Project, Workspace } from '@shared/types'
 import { TasksPanel } from './tasks/TasksPanel'
@@ -7,6 +7,7 @@ import { ActionsView } from './actions/ActionsView'
 import { AuditPanel } from './audit/AuditPanel'
 import { ChangesPanel } from './changes/ChangesPanel'
 import { AgentsView } from './agents/AgentsView'
+import { RunsView } from './runs/RunsView'
 import { HistoryView } from './history/HistoryView'
 import { ProcessesView } from './processes/ProcessesView'
 import { PortsView, ProjectPorts } from './ports/PortsView'
@@ -43,6 +44,7 @@ export const RENDERER_MODULES: RendererModule[] = [
   { id: 'audit', title: 'Audit', icon: ScanSearch, projectTab: AuditPanel, nestUnder: 'review' },
   { id: 'ports', title: 'Ports', icon: Plug, projectTab: ProjectPorts, machinePage: PortsView },
   { id: 'processes', title: 'Processes', icon: Activity, machinePage: ProcessesView },
+  { id: 'runs', title: 'Runs', icon: History, machinePage: RunsView },
   { id: 'history', title: 'Commands', icon: SquareTerminal, machinePage: HistoryView },
   { id: 'agents', title: 'Agents', icon: Bot, machinePage: AgentsView },
   { id: 'actions', title: 'Actions', icon: Zap, machinePage: ActionsView },

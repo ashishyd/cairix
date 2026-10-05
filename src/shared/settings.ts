@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { comboProblem } from './keybindings'
 import { DEFAULT_ONBOARDING } from './onboarding'
-import { ACCENTS, DEFAULT_SETTINGS, type Settings } from './settings-types'
+import { ACCENTS, DEFAULT_NOTIFICATIONS, DEFAULT_SETTINGS, type Settings } from './settings-types'
 
 export { ACCENTS, DEFAULT_SETTINGS }
 export type { Accent, Settings, SettingsPatch } from './settings-types'
@@ -11,6 +11,14 @@ const onboardingSchema = z.object({
   ranScript: z.boolean(),
   openedChanges: z.boolean(),
   openedTasks: z.boolean()
+})
+
+const notificationsSchema = z.object({
+  enabled: z.boolean(),
+  onlyInBackground: z.boolean(),
+  runs: z.boolean(),
+  tasks: z.boolean(),
+  audits: z.boolean()
 })
 
 /** Field validators, without defaults: shared by the full schema and the patch schema. */
@@ -27,7 +35,8 @@ const fields = {
   dashboard: z.array(z.object({ id: z.string().max(40), type: z.string().max(40), size: z.enum(['half', 'full']) })).max(24),
   pinnedScripts: z.array(z.string().max(200)).max(50),
   keybindings: z.record(z.string().max(80), z.string().max(40).refine((v) => v === '' || comboProblem(v) === null, 'Not a usable shortcut')).refine((r) => Object.keys(r).length <= 200),
-  onboarding: onboardingSchema
+  onboarding: onboardingSchema,
+  notifications: notificationsSchema
 }
 
 /**
@@ -49,7 +58,8 @@ export const settingsSchema = z.object({
   pinnedScripts: fields.pinnedScripts.default(DEFAULT_SETTINGS.pinnedScripts),
   // Lenient on read: one bad hand-edited shortcut must not throw away every other setting. The patch schema stays strict.
   keybindings: z.record(z.string().max(80), z.string().max(40)).default(DEFAULT_SETTINGS.keybindings),
-  onboarding: onboardingSchema.default(DEFAULT_ONBOARDING).catch(DEFAULT_ONBOARDING)
+  onboarding: onboardingSchema.default(DEFAULT_ONBOARDING).catch(DEFAULT_ONBOARDING),
+  notifications: notificationsSchema.default(DEFAULT_NOTIFICATIONS).catch(DEFAULT_NOTIFICATIONS)
 })
 
 /**
@@ -59,7 +69,7 @@ export const settingsSchema = z.object({
  * Onboarding accepts a partial object; main merges it into the stored flags.
  */
 export const settingsPatchSchema = z
-  .object({ ...fields, onboarding: onboardingSchema.partial() })
+  .object({ ...fields, onboarding: onboardingSchema.partial(), notifications: notificationsSchema.partial() })
   .partial()
   .strict()
 

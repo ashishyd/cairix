@@ -29,7 +29,8 @@ export function updateSettings(patch: SettingsPatch): Settings {
     // Module toggles merge key-by-key so toggling one module can't wipe the others.
     enabledModules: { ...prev.enabledModules, ...(patch.enabledModules ?? {}) },
     // Same for onboarding milestones — a partial patch must not clear other flags.
-    onboarding: { ...prev.onboarding, ...(patch.onboarding ?? {}) }
+    onboarding: { ...prev.onboarding, ...(patch.onboarding ?? {}) },
+    notifications: { ...prev.notifications, ...(patch.notifications ?? {}) }
   }
   const next = settingsSchema.parse(merged)
   current = next

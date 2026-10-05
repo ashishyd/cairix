@@ -107,6 +107,7 @@ export function runCommand(id: string): void {
     case 'nav.actions': return ui.go({ kind: 'machine', page: 'actions' })
     case 'nav.plugins': return ui.go({ kind: 'machine', page: 'plugins' })
     case 'nav.processes': return ui.go({ kind: 'machine', page: 'processes' })
+    case 'nav.runs': return ui.go({ kind: 'machine', page: 'runs' })
     case 'nav.history': return ui.go({ kind: 'machine', page: 'history' })
     case 'project.scripts': return goProjectTab('scripts')
     case 'project.review': return goProjectTab('review')

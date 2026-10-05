@@ -25,7 +25,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       ...before,
       ...patch,
       enabledModules: { ...before.enabledModules, ...patch.enabledModules },
-      onboarding: patch.onboarding ? { ...before.onboarding, ...patch.onboarding } : before.onboarding
+      onboarding: patch.onboarding ? { ...before.onboarding, ...patch.onboarding } : before.onboarding,
+      notifications: { ...before.notifications, ...patch.notifications }
     }
     set({ settings: next })
     try {

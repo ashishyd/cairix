@@ -11,6 +11,8 @@ Add the folders you work in. Cairix finds every project inside them (monorepo ap
 - **Ports** — every localhost listener, memory footprint, project link, protected system services, and a safe kill.
 - **Processes** — background dev tooling, databases and your other processes, one row per process tree with memory, CPU, uptime and the ports it owns, and a guarded Stop (graceful first, force only if you confirm).
 - **Commands** — every command you run in any terminal, counted from your shell history: how many times, a plain-English description, one-click re-run (in your home folder or a trusted project), a filter box, sorting (most run first by default) and a “never track” list for a single command or a whole program.
+- **Runs** — every finished script run, kept across restarts: result, exit code, duration, the end of its output (secrets masked), filters, one-click re-run, and a per-script view with success rate, average time and a “flaky” flag.
+- **Notifications** — a macOS notification when a script fails (or a run of 15 s or more finishes), and when an agent task or audit completes. Clicking it opens the right page. Each category, and “only when Cairix is in the background”, is a setting, with a “send a test” button.
 - **Agents** — live Claude Code sessions and Cursor workers/plans (read-only).
 - **Review** — one project tab for Overview, Changes, Tasks, and Audit:
   - **Changes** — instant checks (secrets, debug leftovers, conflict markers, risky patterns), optional Claude AI review, fix with diff preview and undo, learn links

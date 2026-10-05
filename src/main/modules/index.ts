@@ -26,6 +26,10 @@ import { detectCli } from './agents/service'
 import { findProject, isInsideWorkspace, listWorkspaces } from './projects/store'
 import { registerAgentsHandlers } from './agents/handlers'
 import { AgentsService } from './agents/service'
+import { createNotifier } from './notify/electron'
+import { registerNotifyHandlers } from './notify/handlers'
+import { registerRunsHandlers } from './runs/handlers'
+import { RunHistoryStore } from './runs/store'
 import { registerAppHandlers } from './app/handlers'
 import { runCommand } from './ports/exec'
 import { registerHistoryHandlers } from './history/handlers'
@@ -63,10 +67,15 @@ export function registerModules(): Modules {
     setTrayStatus({ dev: servers.size, runs: running }, getSettings().trayShowsPortCount)
   }
 
+  const notifier = createNotifier()
+  const runHistory = new RunHistoryStore(app.getPath('userData'), (records) => broadcast(IPC.runsChanged, records))
+
   const runner = new ScriptRunner({
     onRun: (info) => {
       broadcast(IPC.scriptsRunEvent, info)
       refreshTray()
+      // First time we see a run in a final state: keep it, and tell the user if it matters.
+      if (info.endedAt && runHistory.record(info, runner.log(info.runId).text)) notifier.run(info)
     },
     onOutput: (e) => broadcast(IPC.scriptsOutput, e)
   })
@@ -119,6 +128,7 @@ export function registerModules(): Modules {
 
   const audit = new AuditService({
     dataDir: app.getPath('userData'),
+    onFinish: (state) => notifier.audit(state),
     detectClaude: () => detectCli(claudeBin()),
     isDismissed: (p, f) => changes.isDismissed(p, f),
     project: (id) => {
@@ -132,6 +142,7 @@ export function registerModules(): Modules {
   const userData = app.getPath('userData')
   const tasks = new TasksService({
     dataDir: userData,
+    onFinish: (task) => notifier.task(task),
     detect: (bin) => detectCli(bin),
     project: (id) => {
       const f = findProject(id)
@@ -159,6 +170,8 @@ export function registerModules(): Modules {
   setInterval(() => void agents.snapshot().then((s) => (lastAgents = s.sessions), () => undefined), 5000).unref()
 
   registerAppHandlers()
+  registerNotifyHandlers(notifier)
+  registerRunsHandlers(runHistory)
   registerProjectsHandlers(runner)
   registerScriptsHandlers(runner)
   registerPortsHandlers(ports)

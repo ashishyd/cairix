@@ -22,7 +22,9 @@ const api: CairixAPI = {
     openExternal: call(IPC.appOpenExternal),
     showInFolder: call(IPC.appShowInFolder),
     openInApp: call(IPC.appOpenInApp),
-    onOpenPalette: (cb) => on<void>(IPC.uiOpenPalette, () => cb())
+    onOpenPalette: (cb) => on<void>(IPC.uiOpenPalette, () => cb()),
+    onNavigate: (cb) => on(IPC.uiNavigate, cb),
+    testNotification: call(IPC.notifyTest)
   },
   settings: {
     get: call(IPC.settingsGet),
@@ -107,6 +109,12 @@ const api: CairixAPI = {
     stop: call(IPC.processesStop),
     watch: call(IPC.processesWatch),
     onChange: (cb) => on(IPC.processesChanged, cb)
+  },
+  runs: {
+    list: call(IPC.runsList),
+    tail: call(IPC.runsTail),
+    clear: call(IPC.runsClear),
+    onChange: (cb) => on(IPC.runsChanged, cb)
   },
   history: {
     list: call(IPC.historyList),

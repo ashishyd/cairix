@@ -17,6 +17,8 @@ export interface AuditDeps {
   isDismissed(projectId: string, findingId: string): boolean
   run?: (o: RunClaudeOptions) => ReturnType<typeof runClaude>
   concurrency?: number
+  /** Called once an audit has reached a final state. */
+  onFinish?(state: AuditState): void
 }
 
 interface Job {
@@ -158,6 +160,7 @@ export class AuditService {
       state.error = e instanceof Error ? e.message : String(e)
     } finally {
       state.finishedAt = Date.now()
+      this.deps.onFinish?.({ ...state })
     }
   }
 

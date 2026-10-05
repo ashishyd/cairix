@@ -67,3 +67,14 @@ describe('redactCommand', () => {
     expect(redactCommand(once)).toBe(once)
   })
 })
+
+describe('bare secret-named assignments', () => {
+  it('masks TOKEN=, PASSWORD= and SECRET= with no prefix', () => {
+    expect(redactCommand('TOKEN=abc123 run')).toBe('TOKEN=••• run')
+    expect(redactCommand('PASSWORD="hunter 2" run')).toBe('PASSWORD=••• run')
+    expect(redactCommand('env SECRET=s3 KEY=k1 node x.js')).toBe('env SECRET=••• KEY=••• node x.js')
+  })
+  it('still leaves ordinary assignments alone', () => {
+    expect(redactCommand('NODE_ENV=production PORT=3000 node x.js')).toBe('NODE_ENV=production PORT=3000 node x.js')
+  })
+})
