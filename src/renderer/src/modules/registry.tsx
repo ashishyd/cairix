@@ -1,4 +1,4 @@
-import { Puzzle, Bot, Sparkles, Zap, GitCompare, Play, Plug, ScanSearch, Activity, SquareTerminal, History, KeyRound, GitBranch, HeartPulse, Container, CalendarClock, Keyboard, GraduationCap, type LucideIcon } from 'lucide-react'
+import { Puzzle, Bot, Sparkles, Zap, GitCompare, Play, Plug, ScanSearch, Activity, SquareTerminal, History, KeyRound, GitBranch, HeartPulse, Container, CalendarClock, Keyboard, GraduationCap, Layers, type LucideIcon } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { Project, Workspace } from '@shared/types'
 import { TasksPanel } from './tasks/TasksPanel'
@@ -18,6 +18,7 @@ import { EnvPanel } from './env/EnvPanel'
 import { HistoryView } from './history/HistoryView'
 import { ProcessesView } from './processes/ProcessesView'
 import { PortsView, ProjectPorts } from './ports/PortsView'
+import { SharedDepsView } from './shared-deps/SharedDepsView'
 import { ReviewPanel } from './review/ReviewPanel'
 import { ScriptsPanel } from './scripts/ScriptsPanel'
 
@@ -54,6 +55,7 @@ export const RENDERER_MODULES: RendererModule[] = [
   { id: 'audit', title: 'Audit', icon: ScanSearch, projectTab: AuditPanel, nestUnder: 'review' },
   { id: 'ports', title: 'Ports', icon: Plug, projectTab: ProjectPorts, machinePage: PortsView },
   { id: 'processes', title: 'Processes', icon: Activity, machinePage: ProcessesView },
+  { id: 'shareddeps', title: 'Shared deps', icon: Layers, machinePage: SharedDepsView },
   { id: 'keymap', title: 'Keymap', icon: Keyboard, machinePage: KeymapView },
   { id: 'learn', title: 'Daily learn', icon: GraduationCap, machinePage: LearnView },
   { id: 'containers', title: 'Containers', icon: Container, machinePage: ContainersView },

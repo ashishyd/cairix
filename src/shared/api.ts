@@ -17,6 +17,8 @@ import type {
   GitState,
   GitStashOp,
   HealthSnapshot,
+  SharedDepsApplyResult,
+  SharedDepsReport,
   PortConflict,
   Schedule,
   ScheduleDraft,
@@ -238,6 +240,14 @@ export interface CairixAPI {
     deps(projectId: string): Promise<DepsReport>
     /** Deletes one regenerable folder (node_modules, .next, ...) that git does not track. */
     clean(projectId: string, folder: string): Promise<HealthSnapshot>
+  }
+  sharedDeps: {
+    /** Finds packages installed at the same version in more than one project. Read-only; can take a while. */
+    scan(): Promise<SharedDepsReport>
+    /** Shares the chosen name@version packages between projects (identical files become hard links). */
+    apply(keys: string[]): Promise<SharedDepsApplyResult>
+    /** Removes shared copies no project uses any more. */
+    prune(): Promise<{ removed: number; freedKb: number }>
   }
   schedules: {
     list(): Promise<Schedule[]>

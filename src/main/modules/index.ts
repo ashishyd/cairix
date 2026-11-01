@@ -37,6 +37,8 @@ import { registerGitHandlers } from './git/handlers'
 import { GitService } from './git/service'
 import { registerHealthHandlers } from './health/handlers'
 import { HealthService } from './health/service'
+import { registerSharedDepsHandlers } from './shared-deps/handlers'
+import { SharedDepsService } from './shared-deps/service'
 import { registerContainersHandlers } from './containers/handlers'
 import { ContainersService } from './containers/service'
 import { registerSchedulesHandlers } from './schedules/handlers'
@@ -244,6 +246,14 @@ export function registerModules(): Modules {
         const f = findProject(id)
         return f ? { path: f.project.path, trusted: f.workspace.trusted, name: f.workspace.name, hasGit: f.project.hasGit } : undefined
       }
+    })
+  )
+  registerSharedDepsHandlers(
+    new SharedDepsService({
+      // A fake CAIRIX_HOME keeps tests out of the real home folder, like Agents and Commands.
+      storeDir: join(process.env.CAIRIX_HOME || homedir(), '.cairix', 'shared-deps'),
+      projects: () => listWorkspaces().flatMap((w) => w.projects.map((p) => ({ id: p.id, name: p.relPath || w.name, path: p.path, trusted: w.trusted }))),
+      isRunning: (projectId) => runner.list().some((r) => r.projectId === projectId && (r.status === 'running' || r.status === 'stopping'))
     })
   )
   registerContainersHandlers(new ContainersService({ projectForFolder: (path) => resolveProjectForCwd(path) }))

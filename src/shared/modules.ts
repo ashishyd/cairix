@@ -50,6 +50,14 @@ export const MODULES: ModuleManifest[] = [
     defaultEnabled: true
   },
   {
+    id: 'shareddeps',
+    title: 'Shared deps',
+    description: 'Finds packages installed at the same version in several projects and shares one copy on disk to save space.',
+    scope: 'machine',
+    status: 'ready',
+    defaultEnabled: true
+  },
+  {
     id: 'review',
     title: 'Review',
     description: 'One workspace for pending changes, agent tasks and audits — fix and learn in place.',

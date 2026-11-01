@@ -761,6 +761,45 @@ export interface HealthSnapshot {
   manager?: 'npm' | 'pnpm' | 'yarn' | 'bun'
 }
 
+// ───────────────────────── Shared dependencies ─────────────────────────
+
+export interface SharedPackageCopy {
+  projectId: string
+  projectName: string
+  path: string
+  /** Disk this copy holds that is not already shared (KiB). */
+  sizeKb: number
+  trusted: boolean
+}
+
+export interface SharedPackageGroup {
+  /** name@version */
+  key: string
+  name: string
+  version: string
+  /** Size of one full copy (KiB). */
+  sizeKb: number
+  /** What sharing one copy would free (KiB). */
+  reclaimableKb: number
+  copies: SharedPackageCopy[]
+}
+
+export interface SharedDepsReport {
+  ranAt: number
+  /** Projects that have an installed node_modules. */
+  projects: number
+  packages: number
+  groups: SharedPackageGroup[]
+  reclaimableKb: number
+  storeDir: string
+}
+
+export interface SharedDepsApplyResult {
+  applied: Array<{ key: string; linkedFiles: number; savedKb: number }>
+  skipped: Array<{ key: string; reason: string }>
+  report: SharedDepsReport
+}
+
 export interface OutdatedDep {
   name: string
   current: string

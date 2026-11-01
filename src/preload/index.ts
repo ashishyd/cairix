@@ -166,6 +166,11 @@ const api: CairixAPI = {
     deps: call(IPC.healthDeps),
     clean: call(IPC.healthClean)
   },
+  sharedDeps: {
+    scan: call(IPC.sharedDepsScan),
+    apply: call(IPC.sharedDepsApply),
+    prune: call(IPC.sharedDepsPrune)
+  },
   schedules: {
     list: call(IPC.schedulesList),
     save: call(IPC.schedulesSave),

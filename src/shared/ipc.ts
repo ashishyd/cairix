@@ -85,6 +85,10 @@ export const IPC = {
   healthDeps: 'health:deps',
   healthClean: 'health:clean',
 
+  sharedDepsScan: 'sharedDeps:scan',
+  sharedDepsApply: 'sharedDeps:apply',
+  sharedDepsPrune: 'sharedDeps:prune',
+
   schedulesList: 'schedules:list',
   schedulesSave: 'schedules:save',
   schedulesDelete: 'schedules:delete',
