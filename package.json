@@ -21,7 +21,7 @@
     "postinstall": "node scripts/ensure-electron.mjs"
   },
   "dependencies": {
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
