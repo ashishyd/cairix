@@ -732,6 +732,55 @@ export interface ContainersSnapshot {
 
 export type ContainerAction = 'start' | 'stop' | 'restart'
 
+// ───────────────────────── Wi-Fi ─────────────────────────
+
+export type WifiBand = '2.4 GHz' | '5 GHz' | '6 GHz'
+
+/** The current Wi-Fi link as macOS reports it. Network names are left out on purpose. */
+export interface WifiLink {
+  connected: boolean
+  interface: string
+  /** e.g. 802.11ax */
+  phyMode?: string
+  channel?: number
+  band?: WifiBand
+  widthMhz?: number
+  /** Signal strength in dBm (-30 is excellent, -80 is unusable). */
+  rssi?: number
+  noise?: number
+  /** Link rate in Mbit/s negotiated with the router. */
+  txRate?: number
+  /** Other networks heard, by band and channel. */
+  nearby: Array<{ band: WifiBand; channel: number }>
+}
+
+export interface WifiSpeed {
+  at: number
+  downMbps: number
+  upMbps: number
+  /** Round trips per minute while the line is busy (Apple's responsiveness). Higher is better. */
+  rpm: number
+  /** Round-trip time to the test server when idle, in ms. */
+  idleMs: number
+  /** Interface the test traffic used; utun* means a VPN. */
+  interface: string
+}
+
+export interface WifiTip {
+  tone: 'success' | 'warning' | 'danger'
+  title: string
+  detail: string
+}
+
+export interface WifiSnapshot {
+  at: number
+  available: boolean
+  reason?: string
+  link?: WifiLink
+  speed?: WifiSpeed
+  tips: WifiTip[]
+}
+
 // ───────────────────────── Project health ─────────────────────────
 
 export interface ToolCheck {

@@ -81,6 +81,9 @@ export const IPC = {
   containersAction: 'containers:action',
   containersLogs: 'containers:logs',
 
+  wifiStatus: 'wifi:status',
+  wifiSpeedTest: 'wifi:speedTest',
+
   healthScan: 'health:scan',
   healthDeps: 'health:deps',
   healthClean: 'health:clean',

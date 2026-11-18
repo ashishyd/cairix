@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "startedAt": "2026-11-15T08:54:21.016Z",
+  "specification": {
+    "path": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/candidate.json",
+    "sha256": "e30ce87fa5ef444cbcc1ba1d2a7029e4947ce4063d39c1265fecd814e3db4715",
+    "bytes": 3676
+  },
+  "artifact": {
+    "path": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/cairix-architecture.html"
+  },
+  "stages": {
+    "validate": {
+      "status": "fail",
+      "exitCode": 1,
+      "durationMs": null,
+      "command": [
+        "/Users/ashish/.nvm/versions/node/v25.2.1/bin/node",
+        "/Users/ashish/.claude/skills/archify/bin/archify.mjs",
+        "deliver",
+        "architecture",
+        "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/candidate.json",
+        "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/cairix-architecture.html",
+        "--quality",
+        "showcase",
+        "--json"
+      ],
+      "receipt": {
+        "schemaVersion": 1,
+        "ok": false,
+        "command": "deliver",
+        "receiptId": "c24ed5da-e032-4dae-9e04-b6fae655c4a9",
+        "stage": "render",
+        "type": "architecture",
+        "input": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/candidate.json",
+        "output": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/cairix-architecture.html",
+        "error": "Architecture layout validation failed:\n- [clean-flow/endpoint-side-direction] architecture connections[9] id \"push-updates\" \"ipc\" -> \"renderer\" first segment 0 [500, 285] -> [415, 210] does not honor fromSide \"left\" — it must run horizontal leftward; keep automatic routing so the renderer can use a side-aware bridge, or set truthful fromSide/toSide with perpendicular via segments.",
+        "diagnostics": [
+          {
+            "code": "clean-flow/endpoint-side-direction",
+            "severity": "error",
+            "message": "[clean-flow/endpoint-side-direction] architecture connections[9] id \"push-updates\" \"ipc\" -> \"renderer\" first segment 0 [500, 285] -> [415, 210] does not honor fromSide \"left\" — it must run horizontal leftward; keep automatic routing so the renderer can use a side-aware bridge, or set truthful fromSide/toSide with perpendicular via segments.",
+            "subject": {
+              "diagramType": "architecture",
+              "collection": "connections",
+              "index": 9,
+              "id": "push-updates",
+              "from": "ipc",
+              "to": "renderer"
+            },
+            "evidence": {
+              "endpoint": "source",
+              "authoredField": "fromSide",
+              "sideOrigin": "authored",
+              "side": "left",
+              "segmentIndex": 0,
+              "from": [
+                500,
+                285
+              ],
+              "to": [
+                415,
+                210
+              ],
+              "expectedAxis": "horizontal",
+              "expectedDirection": "leftward"
+            },
+            "supportedFixes": [
+              "keep automatic routing so the renderer can use a side-aware bridge, or set truthful fromSide/toSide with perpendicular via segments"
+            ]
+          }
+        ],
+        "provenance": "absent",
+        "update": {
+          "status": "unavailable",
+          "installedVersion": null,
+          "availableVersion": null,
+          "releaseNotes": null,
+          "checkedAt": null,
+          "source": null,
+          "noticeRequired": false,
+          "noticeText": null,
+          "reason": "disabled"
+        }
+      },
+      "execution": "embedded-in-deliver"
+    },
+    "deliver": {
+      "status": "not-run",
+      "execution": "blocked-by-validate"
+    }
+  },
+  "browserCheck": {
+    "requested": true,
+    "ran": false
+  },
+  "diagnostics": [
+    {
+      "code": "clean-flow/endpoint-side-direction",
+      "severity": "error",
+      "message": "[clean-flow/endpoint-side-direction] architecture connections[9] id \"push-updates\" \"ipc\" -> \"renderer\" first segment 0 [500, 285] -> [415, 210] does not honor fromSide \"left\" — it must run horizontal leftward; keep automatic routing so the renderer can use a side-aware bridge, or set truthful fromSide/toSide with perpendicular via segments.",
+      "subject": {
+        "diagramType": "architecture",
+        "collection": "connections",
+        "index": 9,
+        "id": "push-updates",
+        "from": "ipc",
+        "to": "renderer"
+      },
+      "evidence": {
+        "endpoint": "source",
+        "authoredField": "fromSide",
+        "sideOrigin": "authored",
+        "side": "left",
+        "segmentIndex": 0,
+        "from": [
+          500,
+          285
+        ],
+        "to": [
+          415,
+          210
+        ],
+        "expectedAxis": "horizontal",
+        "expectedDirection": "leftward"
+      },
+      "supportedFixes": [
+        "keep automatic routing so the renderer can use a side-aware bridge, or set truthful fromSide/toSide with perpendicular via segments"
+      ]
+    }
+  ],
+  "evidence": {
+    "receipt": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/cairix-architecture.finalize.json",
+    "summaryReceipt": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/cairix-architecture.finalize-summary.json"
+  },
+  "visualReview": "not-requested",
+  "failedStage": "validate",
+  "finishedAt": "2026-11-15T08:54:21.355Z",
+  "durationMs": 338,
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-11-15T08:54:21.128Z",
+    "source": "network",
+    "noticeRequired": false,
+    "noticeText": null
+  }
+}

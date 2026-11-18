@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/candidate.json",
+    "sha256": "9e86fe60ce57e8033e52a6c365e8676fd0a7b253ce27318f1664e1382b1799fd",
+    "bytes": 3606
+  },
+  "artifact": {
+    "path": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/cairix-architecture.html",
+    "sha256": "e0793aae4c886071bda555dd1c4f91efb80dfbd38a688a83b32c7eac3ab413ad",
+    "bytes": 849826
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/review-2/cairix-architecture.finalize.json",
+    "summaryReceipt": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/review-2/cairix-architecture.finalize-summary.json",
+    "browserCheckReceipt": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/review-2/cairix-architecture.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-11-15T08:54:21.128Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 3749,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 1,
+      "routesOverSuggestedBends": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "probe-system",
+            "from": "services",
+            "to": "system",
+            "label": "execFile",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "right": {
+            "id": "container-ops",
+            "from": "services",
+            "to": "docker",
+            "label": "docker ps",
+            "collectionIndex": 6,
+            "artifactIndex": 7
+          },
+          "point": [
+            960,
+            174
+          ],
+          "sharedNode": "services"
+        }
+      ],
+      "detours": [
+        {
+          "relationship": {
+            "id": "run-in-project",
+            "from": "services",
+            "to": "projects",
+            "label": "trusted only",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "bends": 3,
+          "stretch": 1.115,
+          "directCorridorBlockers": [
+            {
+              "id": "store",
+              "label": "JSON state",
+              "box": [
+                730,
+                380,
+                190,
+                66
+              ]
+            }
+          ]
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "services → system and services → docker cross next to services: move node system or docker so the two reach services from different sides (for example one level with it, one directly above or below it)."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

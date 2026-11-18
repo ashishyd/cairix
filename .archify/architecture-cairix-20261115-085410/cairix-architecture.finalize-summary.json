@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/candidate.json",
+    "sha256": "e30ce87fa5ef444cbcc1ba1d2a7029e4947ce4063d39c1265fecd814e3db4715",
+    "bytes": 3676
+  },
+  "artifact": {
+    "path": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/cairix-architecture.html"
+  },
+  "gates": {
+    "validate": "fail",
+    "deliver": "not-run",
+    "check": "not-run",
+    "browser-check": "not-run"
+  },
+  "failedStage": "validate",
+  "diagnostics": [
+    {
+      "code": "clean-flow/endpoint-side-direction",
+      "severity": "error",
+      "message": "[clean-flow/endpoint-side-direction] architecture connections[9] id \"push-updates\" \"ipc\" -> \"renderer\" first segment 0 [500, 285] -> [415, 210] does not honor fromSide \"left\" — it must run horizontal leftward; keep automatic routing so the renderer can use a side-aware bridge, or set truthful fromSide/toSide with perpendicular via segments.",
+      "subject": {
+        "diagramType": "architecture",
+        "collection": "connections",
+        "index": 9,
+        "id": "push-updates",
+        "from": "ipc",
+        "to": "renderer"
+      },
+      "evidence": {
+        "endpoint": "source",
+        "authoredField": "fromSide",
+        "sideOrigin": "authored",
+        "side": "left",
+        "segmentIndex": 0,
+        "from": [
+          500,
+          285
+        ],
+        "to": [
+          415,
+          210
+        ],
+        "expectedAxis": "horizontal",
+        "expectedDirection": "leftward"
+      },
+      "supportedFixes": [
+        "keep automatic routing so the renderer can use a side-aware bridge, or set truthful fromSide/toSide with perpendicular via segments"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/cairix-architecture.finalize.json",
+    "summaryReceipt": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/cairix-architecture.finalize-summary.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-11-15T08:54:21.128Z",
+    "source": "network",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 338,
+  "browserCheck": {
+    "requested": true,
+    "ran": false
+  },
+  "nextAction": {
+    "action": "edit-in-place",
+    "candidate": "/Users/ashish/Desktop/development/products/cairix/.archify/architecture-cairix-20261115-085410/candidate.json",
+    "constraint": "Preserve all semantics and user-fixed geometry. Use references/architecture-layout-repair.md to choose a local repair or connected-scene reflow; edit the existing candidate.",
+    "then": "finalize-once"
+  }
+}

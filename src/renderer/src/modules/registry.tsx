@@ -1,4 +1,4 @@
-import { Puzzle, Bot, Sparkles, Zap, GitCompare, Play, Plug, ScanSearch, Activity, SquareTerminal, History, KeyRound, GitBranch, HeartPulse, Container, CalendarClock, Keyboard, GraduationCap, Layers, type LucideIcon } from 'lucide-react'
+import { Puzzle, Bot, Sparkles, Zap, GitCompare, Play, Plug, ScanSearch, Activity, SquareTerminal, History, KeyRound, GitBranch, HeartPulse, Container, CalendarClock, Keyboard, GraduationCap, Layers, Wifi, type LucideIcon } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { Project, Workspace } from '@shared/types'
 import { TasksPanel } from './tasks/TasksPanel'
@@ -13,6 +13,7 @@ import { KeymapView } from './keymap/KeymapView'
 import { LearnView } from './learn/LearnView'
 import { ContainersView } from './containers/ContainersView'
 import { SchedulesView } from './schedules/SchedulesView'
+import { WifiView } from './wifi/WifiView'
 import { GitPanel } from './git/GitPanel'
 import { EnvPanel } from './env/EnvPanel'
 import { HistoryView } from './history/HistoryView'
@@ -59,6 +60,7 @@ export const RENDERER_MODULES: RendererModule[] = [
   { id: 'keymap', title: 'Keymap', icon: Keyboard, machinePage: KeymapView },
   { id: 'learn', title: 'Daily learn', icon: GraduationCap, machinePage: LearnView },
   { id: 'containers', title: 'Containers', icon: Container, machinePage: ContainersView },
+  { id: 'wifi', title: 'Wi-Fi', icon: Wifi, machinePage: WifiView },
   { id: 'schedules', title: 'Schedules', icon: CalendarClock, machinePage: SchedulesView },
   { id: 'runs', title: 'Runs', icon: History, machinePage: RunsView },
   { id: 'history', title: 'Commands', icon: SquareTerminal, machinePage: HistoryView },

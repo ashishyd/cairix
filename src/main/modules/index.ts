@@ -41,6 +41,8 @@ import { registerSharedDepsHandlers } from './shared-deps/handlers'
 import { SharedDepsService } from './shared-deps/service'
 import { registerContainersHandlers } from './containers/handlers'
 import { ContainersService } from './containers/service'
+import { registerWifiHandlers } from './wifi/handlers'
+import { WifiService } from './wifi/service'
 import { registerSchedulesHandlers } from './schedules/handlers'
 import { Scheduler } from './schedules/service'
 import { ScheduleStore } from './schedules/store'
@@ -257,6 +259,7 @@ export function registerModules(): Modules {
     })
   )
   registerContainersHandlers(new ContainersService({ projectForFolder: (path) => resolveProjectForCwd(path) }))
+  registerWifiHandlers(new WifiService())
   const scheduleStore = new ScheduleStore(app.getPath('userData'), () => broadcast(IPC.schedulesChanged, scheduler.list()))
   const scheduler = new Scheduler(scheduleStore, {
     tickMs: process.env.CAIRIX_SCHEDULER_TICK_MS ? Number(process.env.CAIRIX_SCHEDULER_TICK_MS) : undefined,

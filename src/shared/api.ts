@@ -51,6 +51,7 @@ import type {
   RunOutputEvent,
   RunScriptRequest,
   ScriptDef,
+  WifiSnapshot,
   Workspace
 } from './types'
 
@@ -232,6 +233,12 @@ export interface CairixAPI {
     /** Main re-checks the id against the container list before acting. */
     action(id: string, action: ContainerAction): Promise<ContainersSnapshot>
     logs(id: string, tail?: number): Promise<string>
+  }
+  wifi: {
+    /** Signal, band and channel now, plus tips. Local only, no network traffic. */
+    status(): Promise<WifiSnapshot>
+    /** Runs Apple's networkQuality (about 20 s, real traffic), then returns status with the result. */
+    speedTest(): Promise<WifiSnapshot>
   }
   health: {
     /** Tool versions against what the project asks for, and the folders using the most disk. */

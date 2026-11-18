@@ -130,6 +130,14 @@ export const MODULES: ModuleManifest[] = [
     defaultEnabled: true
   },
   {
+    id: 'wifi',
+    title: 'Wi-Fi',
+    description: 'Signal, band, channel crowding and a speed test, with plain steps to make Wi-Fi faster.',
+    scope: 'machine',
+    status: 'ready',
+    defaultEnabled: true
+  },
+  {
     id: 'schedules',
     title: 'Schedules',
     description: 'Run a script or an agent task every few minutes, at a time of day, or when a branch changes.',

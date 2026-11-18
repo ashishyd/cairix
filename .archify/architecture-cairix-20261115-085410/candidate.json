@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Cairix architecture",
+    "subtitle": "Three processes, one direction of trust; no server, no database",
+    "output": ".archify/architecture-cairix-20261115-085410/cairix-architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "renderer", "type": "frontend", "label": "Renderer", "sublabel": "React 19 page", "tag": "untrusted", "pos": [40, 250], "size": [170, 70] },
+    { "id": "preload", "type": "security", "label": "Preload bridge", "sublabel": "window.cairix", "pos": [270, 250], "size": [170, 70] },
+    { "id": "ipc", "type": "backend", "label": "IPC handlers", "sublabel": "handle() + zod bounds", "pos": [500, 250], "size": [170, 70] },
+    { "id": "services", "type": "backend", "label": "Feature services", "sublabel": "ports, git, containers, agents, schedules", "pos": [730, 130], "size": [190, 74] },
+    { "id": "store", "type": "database", "label": "JSON state", "sublabel": "userData folder", "pos": [730, 380], "size": [190, 66] },
+    { "id": "claude", "type": "external", "label": "claude CLI", "sublabel": "reviews, tasks, audits", "tag": "paid usage", "pos": [1000, 40], "size": [170, 66] },
+    { "id": "system", "type": "cloud", "label": "Processes and ports", "sublabel": "lsof, ps, kill", "pos": [1000, 150], "size": [170, 66] },
+    { "id": "docker", "type": "external", "label": "Docker", "sublabel": "docker CLI", "pos": [1000, 260], "size": [170, 66] },
+    { "id": "git", "type": "external", "label": "git and gh", "sublabel": "repos and PRs", "pos": [1000, 370], "size": [170, 66] },
+    { "id": "projects", "type": "external", "label": "User projects", "sublabel": "scripts, trusted folders", "pos": [730, 500], "size": [190, 66] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Electron main process (Node)", "wraps": ["ipc", "services", "store"] }
+  ],
+  "connections": [
+    { "id": "ui-calls", "from": "renderer", "to": "preload", "label": "ids only", "variant": "emphasis" },
+    { "id": "bridge-invoke", "from": "preload", "to": "ipc", "label": "invoke" },
+    { "id": "ipc-dispatch", "from": "ipc", "to": "services", "label": "validated call" },
+    { "id": "persist", "from": "services", "to": "store", "label": "readJson / writeJsonAtomic", "fromSide": "bottom", "toSide": "top", "variant": "dashed" },
+    { "id": "run-claude", "from": "services", "to": "claude", "label": "prompt on stdin" },
+    { "id": "probe-system", "from": "services", "to": "system", "label": "execFile" },
+    { "id": "container-ops", "from": "services", "to": "docker", "label": "docker ps" },
+    { "id": "git-ops", "from": "services", "to": "git", "label": "git, gh" },
+    { "id": "run-in-project", "from": "services", "to": "projects", "label": "trusted only", "fromSide": "bottom", "toSide": "right", "variant": "security" },
+    { "id": "push-updates", "from": "ipc", "to": "renderer", "label": "broadcast", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "rose", "title": "Trust", "items": ["Renderer is untrusted and sends ids, never commands or paths", "Main re-derives every path and command from disk or a fresh scan", "Preload exposes only a typed bridge"] },
+    { "dot": "emerald", "title": "Main process", "items": ["Services take Deps and never import electron", "Processes start with execFile and an argument array", "Output is redacted before it leaves main"] },
+    { "dot": "amber", "title": "Data and cost", "items": ["State is JSON files in userData, no database", "Claude calls go through the claude CLI and cost money"] }
+  ]
+}
