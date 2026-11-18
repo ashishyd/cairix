@@ -981,3 +981,34 @@ export interface PortConflict {
   /** How we knew the script would use it, e.g. "--port 3000". */
   why: string
 }
+
+// ───────────────────────── Slow Mac ─────────────────────────
+
+export type SlowSeverity = 'high' | 'medium' | 'low'
+
+export interface SlowFinding {
+  /** Stable for one cause (`proc:1234`, `docker:abc123`, `disk`); the only thing the page sends back to fix it. */
+  id: string
+  severity: SlowSeverity
+  title: string
+  /** What is happening and, when Cairix cannot fix it, what to do. */
+  detail: string
+  /** Present only when Cairix can fix it safely; the label is the button text. */
+  fix?: { kind: 'stop-process' | 'stop-container'; label: string }
+}
+
+export interface SlowReport {
+  at: number
+  cores: number
+  /** One-minute load average. Around `cores` means fully busy. */
+  load1: number
+  findings: SlowFinding[]
+}
+
+export interface SlowFixResult {
+  ok: boolean
+  /** Still running after a gentle stop: offer force. */
+  stuck: boolean
+  message: string
+  report: SlowReport
+}

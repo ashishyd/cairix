@@ -90,6 +90,8 @@ export const IPC = {
   wifiSaveRouter: 'wifi:saveRouter',
   wifiReadRouterImage: 'wifi:readRouterImage',
   wifiAiPlan: 'wifi:aiPlan',
+  slowdownDiagnose: 'slowdown:diagnose',
+  slowdownFix: 'slowdown:fix',
 
   healthScan: 'health:scan',
   healthDeps: 'health:deps',

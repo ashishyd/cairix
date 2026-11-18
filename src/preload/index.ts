@@ -167,6 +167,10 @@ const api: CairixAPI = {
     action: call(IPC.containersAction),
     logs: call(IPC.containersLogs)
   },
+  slowdown: {
+    diagnose: call(IPC.slowdownDiagnose),
+    fix: call(IPC.slowdownFix)
+  },
   wifi: {
     status: call(IPC.wifiStatus),
     speedTest: call(IPC.wifiSpeedTest),

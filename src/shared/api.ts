@@ -55,6 +55,8 @@ import type {
   RunScriptRequest,
   ScriptDef,
   WifiSnapshot,
+  SlowReport,
+  SlowFixResult,
   Workspace
 } from './types'
 
@@ -246,6 +248,12 @@ export interface CairixAPI {
     /** Main re-checks the id against the container list before acting. */
     action(id: string, action: ContainerAction): Promise<ContainersSnapshot>
     logs(id: string, tail?: number): Promise<string>
+  }
+  slowdown: {
+    /** Looks at CPU, memory, swap, disk, heat and power mode, worst cause first. */
+    diagnose(): Promise<SlowReport>
+    /** Fixes one finding. The id is re-checked against a fresh diagnosis; force is SIGKILL for processes. */
+    fix(id: string, force: boolean): Promise<SlowFixResult>
   }
   wifi: {
     /** Signal, band and channel now, plus tips. Local only, no network traffic. */

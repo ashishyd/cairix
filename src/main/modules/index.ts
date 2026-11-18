@@ -43,6 +43,8 @@ import { registerSharedDepsHandlers } from './shared-deps/handlers'
 import { SharedDepsService } from './shared-deps/service'
 import { registerContainersHandlers } from './containers/handlers'
 import { ContainersService } from './containers/service'
+import { registerSlowdownHandlers } from './slowdown/handlers'
+import { SlowdownService } from './slowdown/service'
 import { registerWifiHandlers } from './wifi/handlers'
 import { WifiService } from './wifi/service'
 import { RouterStore } from './wifi/store'
@@ -261,7 +263,17 @@ export function registerModules(): Modules {
       isRunning: (projectId) => runner.list().some((r) => r.projectId === projectId && (r.status === 'running' || r.status === 'stopping'))
     })
   )
-  registerContainersHandlers(new ContainersService({ projectForFolder: (path) => resolveProjectForCwd(path) }))
+  const containers = new ContainersService({ projectForFolder: (path) => resolveProjectForCwd(path) })
+  registerContainersHandlers(containers)
+  registerSlowdownHandlers(
+    new SlowdownService({
+      run: runCommand,
+      devProcesses: () => processes.entries('dev'),
+      stopProcess: (pid, force) => processes.stopProcess({ pid, force, filter: 'dev' }),
+      runningContainers: async () => (await containers.list()).containers.filter((c) => c.state === 'running').map((c) => ({ id: c.id, name: c.name })),
+      stopContainer: async (id) => void (await containers.action(id, 'stop'))
+    })
+  )
   registerWifiHandlers(new WifiService({ store: new RouterStore(app.getPath('userData')) }))
   const scheduleStore = new ScheduleStore(app.getPath('userData'), () => broadcast(IPC.schedulesChanged, scheduler.list()))
   const scheduler = new Scheduler(scheduleStore, {

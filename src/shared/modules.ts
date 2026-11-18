@@ -138,6 +138,14 @@ export const MODULES: ModuleManifest[] = [
     defaultEnabled: true
   },
   {
+    id: 'slowdown',
+    title: 'Slow Mac',
+    description: 'Finds what is slowing this Mac down (runaway processes, memory, disk, heat) and fixes what is safe to fix.',
+    scope: 'machine',
+    status: 'ready',
+    defaultEnabled: true
+  },
+  {
     id: 'schedules',
     title: 'Schedules',
     description: 'Run a script or an agent task every few minutes, at a time of day, or when a branch changes.',

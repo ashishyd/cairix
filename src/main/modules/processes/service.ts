@@ -1,5 +1,5 @@
 import { userInfo } from 'os'
-import type { KillResult, PortEntry, ProcessSnapshot, StopProcessRequest } from '@shared/types'
+import type { KillResult, PortEntry, ProcessEntry, ProcessSnapshot, StopProcessRequest } from '@shared/types'
 import { runCommand } from '../ports/exec'
 import { terminateTree } from '../ports/kill'
 import { planStop, scanProcesses, type ProcessFilter, type ProcessScan } from './scan'
@@ -40,6 +40,11 @@ export class ProcessesService {
   async scan(filter: ProcessFilter): Promise<ProcessSnapshot> {
     this.filter = filter
     return toSnapshot(await this.scanNow(filter), filter)
+  }
+
+  /** A fresh scan's rows, without touching which view the polling loop follows. */
+  async entries(filter: ProcessFilter): Promise<ProcessEntry[]> {
+    return (await this.scanNow(filter)).entries
   }
 
   async stopProcess(req: StopProcessRequest): Promise<KillResult> {
