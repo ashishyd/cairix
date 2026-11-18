@@ -230,6 +230,62 @@ function ChangesWidget(): React.JSX.Element {
   )
 }
 
+// ───────────────────────── Needs you ─────────────────────────
+
+/** Only data Home already has: must-fix problems from the changes overview, and Claude sessions that are idle (waiting for input). */
+function NeedsWidget(): React.JSX.Element {
+  const go = useUiStore((s) => s.go)
+  const snap = useAgentsStore((s) => s.snapshot)
+  const [items, setItems] = useState<ChangesOverviewItem[] | null>(null)
+  useEffect(() => {
+    let live = true
+    const load = (): void => {
+      if (document.hidden) return
+      window.cairix.changes.overview().then((o) => live && setItems(o), () => undefined)
+    }
+    load()
+    const t = setInterval(load, 15_000)
+    return () => {
+      live = false
+      clearInterval(t)
+    }
+  }, [])
+  if (!items || !snap) return <Empty>Checking your projects and agents…</Empty>
+  const broken = items.filter((c) => c.errors > 0)
+  const waiting = snap.sessions.filter((s) => s.kind === 'claude' && s.status === 'idle')
+  if (broken.length === 0 && waiting.length === 0) {
+    return <p className="flex items-center gap-2 rounded-lg bg-cx-success/10 p-3.5 text-cx-success"><CircleCheck size={15} /> Nothing needs you right now.</p>
+  }
+  return (
+    <ul>
+      {broken.map((c) => (
+        <li key={`c-${c.projectId}`}>
+          <Row onClick={() => go({ kind: 'project', projectId: c.projectId, tab: 'changes' })} label={`${c.name}: ${c.errors} must fix`}>
+            <StatusDot tone="danger" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium">{c.name}</span>
+              <span className="block truncate text-sm text-cx-faint">{c.branch ?? 'detached'} · {c.files} changed file{c.files === 1 ? '' : 's'}</span>
+            </span>
+            <Chip tone="danger">{c.errors} must fix</Chip>
+          </Row>
+        </li>
+      ))}
+      {waiting.map((s) => (
+        <li key={`a-${s.id}`}>
+          <Row onClick={() => s.projectId ? go({ kind: 'project', projectId: s.projectId, tab: 'tasks' }) : go({ kind: 'machine', page: 'agents' })} label={`${s.title}: waiting for you`}>
+            <StatusDot tone="warning" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium">{s.title}</span>
+              <span className="block truncate text-sm text-cx-faint">Claude Code{s.projectName ? ` · ${s.projectName}` : ''}</span>
+            </span>
+            <Chip tone="warning">Waiting</Chip>
+          </Row>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 // ───────────────────────── Pinned scripts ─────────────────────────
 
 function PinnedWidget(): React.JSX.Element {
@@ -287,6 +343,7 @@ function PinnedWidget(): React.JSX.Element {
 }
 
 export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType> = {
+  needs: NeedsWidget,
   stats: StatsWidget,
   running: RunningWidget,
   listening: ListeningWidget,

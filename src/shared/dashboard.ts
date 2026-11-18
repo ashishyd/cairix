@@ -19,6 +19,7 @@ export interface WidgetMeta {
 }
 
 export const WIDGETS = {
+  needs: { title: 'Needs you', description: 'Problems found in pending changes and agents waiting for you.', defaultSize: 'full' },
   stats: { title: 'Overview', description: 'Projects, running scripts and dev servers at a glance.', defaultSize: 'full' },
   running: { title: 'Running from Cairix', description: 'Scripts and actions you started, with their ports.', defaultSize: 'half' },
   listening: { title: 'Listening now', description: 'Dev servers on this machine with their memory.', defaultSize: 'half' },
@@ -33,6 +34,7 @@ export const isWidgetType = (t: string): t is WidgetType => t in WIDGETS
 export const MAX_WIDGETS = 24
 
 export const DEFAULT_DASHBOARD: DashboardItem[] = [
+  { id: 'needs', type: 'needs', size: 'full' },
   { id: 'stats', type: 'stats', size: 'full' },
   { id: 'running', type: 'running', size: 'half' },
   { id: 'listening', type: 'listening', size: 'half' },

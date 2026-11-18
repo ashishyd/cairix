@@ -739,7 +739,7 @@ await step('Dashboard: pin a script, add widgets, reorder by drag and by keyboar
   await page.getByRole('button', { name: 'Unpin from Home' }).first().waitFor()
 
   await side.getByRole('button', { name: 'Home' }).click()
-  assert(JSON.stringify(await widgetTitles()) === JSON.stringify(['Overview', 'Running from Cairix', 'Listening now', 'Agents', 'Pending changes']), `default layout wrong: ${await widgetTitles()}`)
+  assert(JSON.stringify(await widgetTitles()) === JSON.stringify(['Needs you', 'Overview', 'Running from Cairix', 'Listening now', 'Agents', 'Pending changes']), `default layout wrong: ${await widgetTitles()}`)
   // the cross-project widget sees web-app's uncommitted dirty.js
   const changes = page.locator('section[aria-label="Pending changes"]')
   await changes.getByText('1 changed file').waitFor({ timeout: 20_000 })
@@ -752,19 +752,19 @@ await step('Dashboard: pin a script, add widgets, reorder by drag and by keyboar
   await pinned.getByText('serve').waitFor({ timeout: 10_000 })
   await settle(); await page.screenshot({ path: join(shots, '21-dashboard-edit.png') })
 
-  // drag "Agents" before "Overview"
-  await page.locator('section[aria-label="Agents"]').dragTo(page.locator('section[aria-label="Overview"]'))
+  // drag "Agents" before "Needs you"
+  await page.locator('section[aria-label="Agents"]').dragTo(page.locator('section[aria-label="Needs you"]'))
   await page.waitForFunction(() => [...document.querySelectorAll('main section[aria-label]')].map((e) => e.getAttribute('aria-label')).filter((t) => t !== 'Getting started')[0] === 'Agents')
   // keyboard: move Agents down one place
   await page.getByRole('button', { name: 'Move Agents down' }).click()
-  await page.waitForFunction(() => [...document.querySelectorAll('main section[aria-label]')].map((e) => e.getAttribute('aria-label')).filter((t) => t !== 'Getting started').slice(0, 2).join() === 'Overview,Agents')
+  await page.waitForFunction(() => [...document.querySelectorAll('main section[aria-label]')].map((e) => e.getAttribute('aria-label')).filter((t) => t !== 'Getting started').slice(0, 2).join() === 'Needs you,Agents')
   // resize + remove
   await page.getByRole('button', { name: 'Make Pinned scripts full width' }).click()
   await page.getByRole('button', { name: 'Remove Listening now' }).click()
   await page.getByRole('button', { name: 'Done' }).click()
 
   const saved = JSON.parse(readFileSync(join(userData, 'settings.json'), 'utf8'))
-  assert(saved.dashboard.map((d) => d.type).join() === 'stats,agents,running,changes,pinned', `saved order wrong: ${saved.dashboard.map((d) => d.type)}`)
+  assert(saved.dashboard.map((d) => d.type).join() === 'needs,agents,stats,running,changes,pinned', `saved order wrong: ${saved.dashboard.map((d) => d.type)}`)
   assert(saved.dashboard.at(-1).size === 'full' && saved.pinnedScripts.length === 1, 'size/pins not saved')
   await settle(); await page.screenshot({ path: join(shots, '22-dashboard.png') })
   // controls are hidden again outside edit mode
@@ -774,7 +774,7 @@ await step('Dashboard: pin a script, add widgets, reorder by drag and by keyboar
   await page.getByRole('button', { name: 'Customize' }).click()
   await page.getByRole('button', { name: 'Reset layout' }).click()
   await page.getByRole('button', { name: 'Done' }).click()
-  assert(JSON.stringify(await widgetTitles()) === JSON.stringify(['Overview', 'Running from Cairix', 'Listening now', 'Agents', 'Pending changes']), 'reset should restore the default layout')
+  assert(JSON.stringify(await widgetTitles()) === JSON.stringify(['Needs you', 'Overview', 'Running from Cairix', 'Listening now', 'Agents', 'Pending changes']), 'reset should restore the default layout')
 })
 
 await step('Shortcuts: rebind with validation and conflicts, bind a custom action to a key, reset all', async () => {

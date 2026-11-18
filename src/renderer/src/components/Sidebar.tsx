@@ -40,6 +40,13 @@ import { IconButton, Kbd, StatusDot } from './ui'
 
 const MACHINE_ICONS: Record<string, LucideIcon> = { ports: Plug, processes: Activity, keymap: Keyboard, learn: GraduationCap, containers: Container, schedules: CalendarClock, runs: History, history: SquareTerminal, agents: Bot, actions: Zap, plugins: Puzzle }
 
+// Machine pages split by how you use them; any id not listed lands in Tools so new modules still show up.
+const MACHINE_GROUPS: { title: string; ids: string[] }[] = [
+  { title: 'Running', ids: ['ports', 'processes', 'containers', 'wifi'] },
+  { title: 'Automation', ids: ['agents', 'schedules', 'runs', 'actions'] },
+  { title: 'Tools', ids: [] }
+]
+
 function NavItem({ icon: Icon, label, active, onClick, trailing }: { icon: LucideIcon; label: string; active: boolean; onClick: () => void; trailing?: React.ReactNode }): React.JSX.Element {
   return (
     <button
@@ -162,6 +169,11 @@ export function Sidebar(): React.JSX.Element {
   const runningIds = useMemo(() => new Set(Object.values(runs).filter(isActive).map((r) => r.projectId)), [runs])
   const machine = MODULES.filter((m) => m.scope === 'machine' && isModuleEnabled(m, enabledModules))
   const learn = MODULES.filter((m) => m.scope === 'learn' && isModuleEnabled(m, enabledModules))
+  const claimed = new Set(MACHINE_GROUPS.flatMap((g) => g.ids))
+  const machineGroups = MACHINE_GROUPS.map((g) => ({
+    title: g.title,
+    items: g.ids.length > 0 ? g.ids.flatMap((id) => machine.filter((m) => m.id === id)) : machine.filter((m) => !claimed.has(m.id))
+  })).filter((g) => g.items.length > 0)
   const servers = countServers(snapshot)
   const working = busyCount(useAgentsStore((s) => s.snapshot))
 
@@ -170,6 +182,18 @@ export function Sidebar(): React.JSX.Element {
       className="sidebar-bg drag flex h-full w-[256px] shrink-0 flex-col border-r border-cx-border/70 pt-[52px]"
       aria-label="Sidebar"
     >
+      <div className="no-drag px-2 pb-2">
+        <button
+          onClick={() => setPalette(true)}
+          title="Search or run anything"
+          className="flex h-8 w-full items-center gap-2 rounded-lg border border-cx-border bg-cx-surface px-2.5 text-left text-cx-faint transition-colors hover:bg-cx-hover"
+        >
+          <Search size={14} />
+          <span className="flex-1">Search or run…</span>
+          {kPalette && <Kbd>{kPalette}</Kbd>}
+        </button>
+      </div>
+
       <div className="flex-1 overflow-y-auto px-2 pb-2">
         <NavItem icon={House} label="Home" active={view.kind === 'home'} onClick={() => go({ kind: 'home' })} />
 
@@ -184,9 +208,9 @@ export function Sidebar(): React.JSX.Element {
           )}
         </Section>
 
-        {machine.length > 0 && (
-          <Section title="Machine">
-            {machine.map((m) => (
+        {machineGroups.map((g) => (
+          <Section key={g.title} title={g.title}>
+            {g.items.map((m) => (
               <NavItem
                 key={m.id}
                 icon={MACHINE_ICONS[m.id] ?? Terminal}
@@ -203,7 +227,7 @@ export function Sidebar(): React.JSX.Element {
               />
             ))}
           </Section>
-        )}
+        ))}
 
         {learn.length > 0 && (
           <Section title="Learn">
@@ -217,10 +241,6 @@ export function Sidebar(): React.JSX.Element {
       <div className="no-drag flex items-center gap-2 border-t border-cx-border/70 px-3 py-2.5">
         <BrandLogo size={22} />
         <span className="flex-1 text-sm font-semibold tracking-tight">Cairix</span>
-        <button onClick={() => setPalette(true)} className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-cx-muted hover:bg-cx-hover hover:text-cx-text" title="Search or run anything">
-          <Search size={13} />
-          {kPalette && <Kbd>{kPalette}</Kbd>}
-        </button>
         <IconButton icon={Settings} label={`Settings${kSettings ? ` (${kSettings})` : ''}`} onClick={() => setSettings(true)} />
       </div>
     </aside>
