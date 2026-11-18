@@ -2,10 +2,11 @@ import { stat } from 'fs/promises'
 import { homedir } from 'os'
 import { z } from 'zod'
 import { IPC } from '@shared/ipc'
-import type { HistoryRerunResult, Project, Workspace } from '@shared/types'
+import type { ActionDraft, CustomAction, HistoryRerunResult, Project, Workspace } from '@shared/types'
 import { handle } from '../../ipc'
 import { runInTerminal, shq } from '../../terminal'
 import type { ScriptRunner } from '../scripts/runner'
+import { runbookDraft } from './runbooks'
 import type { HistoryService } from './service'
 
 const rule = z.object({ kind: z.enum(['command', 'program']), value: z.string().min(1).max(2000) })
@@ -13,6 +14,8 @@ const rerun = z.object({ id: z.string().max(40), projectId: z.string().max(64).o
 
 export interface HistoryHandlerDeps {
   runner: ScriptRunner
+  /** Saves an Action (the Actions store validates the name and template). */
+  saveAction(draft: ActionDraft): CustomAction
   findProject(id: string): { project: Project; workspace: Workspace } | undefined
   /** The project a folder belongs to, if any (the folder itself or one above it). */
   projectForFolder(path: string): { project: Project; workspace: Workspace } | undefined
@@ -22,6 +25,13 @@ const HOME_PROJECT: Project = { id: 'history', name: 'Commands', path: homedir()
 
 export function registerHistoryHandlers(history: HistoryService, deps: HistoryHandlerDeps): void {
   handle(IPC.historyList, z.tuple([]), () => history.snapshot())
+  handle(IPC.historyRunbooks, z.tuple([]), () => history.runbooks())
+  handle(IPC.historySaveRunbook, z.tuple([z.string().max(40), z.string().max(60)]), async (id, name) => {
+    // The commands are looked up again from history; the renderer only names one.
+    const rb = (await history.runbooks()).find((r) => r.id === id)
+    if (!rb) throw new Error('That sequence is no longer in your recent history.')
+    return deps.saveAction(runbookDraft(rb, name))
+  })
   handle(IPC.historyIgnore, z.tuple([rule]), (r) => history.ignore(r))
   handle(IPC.historyUnignore, z.tuple([rule]), (r) => history.unignore(r))
   handle(IPC.historyHookInstall, z.tuple([]), () => history.installHook())

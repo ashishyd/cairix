@@ -1,4 +1,4 @@
-import { Puzzle, Bot, Sparkles, Zap, GitCompare, Play, Plug, ScanSearch, Activity, SquareTerminal, History, KeyRound, GitBranch, HeartPulse, Container, CalendarClock, Keyboard, GraduationCap, Layers, Wifi, type LucideIcon } from 'lucide-react'
+import { Puzzle, Bot, Sparkles, Zap, GitCompare, Play, Plug, ScanSearch, Activity, SquareTerminal, History, KeyRound, GitBranch, HeartPulse, Container, CalendarClock, Keyboard, GraduationCap, Layers, Wifi, PlaneTakeoff, type LucideIcon } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { Project, Workspace } from '@shared/types'
 import { TasksPanel } from './tasks/TasksPanel'
@@ -7,6 +7,7 @@ import { ActionsView } from './actions/ActionsView'
 import { AuditPanel } from './audit/AuditPanel'
 import { ChangesPanel } from './changes/ChangesPanel'
 import { AgentsView } from './agents/AgentsView'
+import { FlightView } from './flight/FlightView'
 import { RunsView } from './runs/RunsView'
 import { HealthPanel } from './health/HealthPanel'
 import { KeymapView } from './keymap/KeymapView'
@@ -65,6 +66,7 @@ export const RENDERER_MODULES: RendererModule[] = [
   { id: 'runs', title: 'Runs', icon: History, machinePage: RunsView },
   { id: 'history', title: 'Commands', icon: SquareTerminal, machinePage: HistoryView },
   { id: 'agents', title: 'Agents', icon: Bot, machinePage: AgentsView },
+  { id: 'flight', title: 'Flight recorder', icon: PlaneTakeoff, machinePage: FlightView },
   { id: 'actions', title: 'Actions', icon: Zap, machinePage: ActionsView },
   { id: 'plugins', title: 'Plugins', icon: Puzzle, machinePage: PluginsView }
 ]

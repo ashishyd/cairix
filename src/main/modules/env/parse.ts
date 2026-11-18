@@ -101,3 +101,22 @@ export const SENSITIVE_KEY = /(KEY|TOKEN|SECRET|PASS(WORD|WD)?|PWD|CREDENTIAL|PR
 
 export const isTemplateName = (name: string): boolean => /\.(example|sample|template|dist|defaults?)$/i.test(name)
 export const ENV_FILE = /^\.env(\.[A-Za-z0-9][A-Za-z0-9._-]*)?$/
+
+export interface Worktree {
+  path: string
+  branch?: string
+  bare: boolean
+}
+
+/** `git worktree list --porcelain`: blocks separated by a blank line, each starting with `worktree <path>`. */
+export function parseWorktrees(text: string): Worktree[] {
+  const out: Worktree[] = []
+  for (const block of text.split(/\n\s*\n/)) {
+    const lines = block.split('\n')
+    const path = lines.find((l) => l.startsWith('worktree '))?.slice(9)
+    if (!path) continue
+    const ref = lines.find((l) => l.startsWith('branch '))?.slice(7)
+    out.push({ path, branch: ref?.replace(/^refs\/heads\//, ''), bare: lines.includes('bare') })
+  }
+  return out
+}

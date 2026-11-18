@@ -46,6 +46,8 @@ export const IPC = {
 
   agentsSnapshot: 'agents:snapshot',
 
+  flightList: 'flight:list',
+
   processesScan: 'processes:scan',
   processesStop: 'processes:stop',
   processesWatch: 'processes:watch',
@@ -61,6 +63,8 @@ export const IPC = {
 
   historyList: 'history:list',
   historyRerun: 'history:rerun',
+  historyRunbooks: 'history:runbooks',
+  historySaveRunbook: 'history:saveRunbook',
   historyIgnore: 'history:ignore',
   historyUnignore: 'history:unignore',
   historyChanged: 'history:changed',
@@ -83,6 +87,9 @@ export const IPC = {
 
   wifiStatus: 'wifi:status',
   wifiSpeedTest: 'wifi:speedTest',
+  wifiSaveRouter: 'wifi:saveRouter',
+  wifiReadRouterImage: 'wifi:readRouterImage',
+  wifiAiPlan: 'wifi:aiPlan',
 
   healthScan: 'health:scan',
   healthDeps: 'health:deps',
@@ -106,6 +113,7 @@ export const IPC = {
 
   envList: 'env:list',
   envReveal: 'env:reveal',
+  envDrift: 'env:drift',
   envSet: 'env:set',
   envRemove: 'env:remove',
   envCreate: 'env:create',

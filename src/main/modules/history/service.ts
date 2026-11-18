@@ -1,10 +1,11 @@
 import { open, stat, truncate } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
-import type { HistoryHookStatus, HistorySnapshot } from '@shared/types'
+import type { HistoryHookStatus, HistorySnapshot, Runbook } from '@shared/types'
 import { hasBlock, installHook, parseHookLog, rcBlock, readRc, removeHook, type HookPaths } from './hook'
-import { parseHistory, unmetafy, type HistoryFormat } from './parse'
-import { HistoryStore } from './store'
+import { parseHistory, unmetafy, type HistoryFormat, type ParsedCommand } from './parse'
+import { findRunbooks } from './runbooks'
+import { HistoryStore, skipReason } from './store'
 
 const POLL_MS = 4000
 /** Largest slice read in one go. A first import of a huge file simply takes a few rounds. */
@@ -13,6 +14,8 @@ const MAX_READ = 8 * 1024 * 1024
 const HOOK_LOG_MAX = 512 * 1024
 /** On first import, only the newest part of a very large file is counted. */
 const FIRST_IMPORT_TAIL = 16 * 1024 * 1024
+/** Runbooks are looked for in the newest part of each history file only. */
+const RUNBOOK_TAIL = 1024 * 1024
 
 export interface HistorySource {
   path: string
@@ -90,6 +93,35 @@ export class HistoryService {
       tracking: this.deps.isEnabled(),
       hook: this.hookStatus()
     }
+  }
+
+  /** Repeated command sequences, from the tail of each history file (order matters, and the store only keeps counts). */
+  async runbooks(): Promise<Runbook[]> {
+    if (!this.deps.isEnabled()) return []
+    const byId = new Map<string, Runbook>()
+    for (const src of this.sources) {
+      if (src.format === 'hook') continue
+      for (const r of findRunbooks(await this.tail(src))) if ((byId.get(r.id)?.count ?? 0) < r.count) byId.set(r.id, r)
+    }
+    return [...byId.values()].sort((a, b) => b.count * b.commands.length - a.count * a.commands.length)
+  }
+
+  /** The newest commands of one history file. Skipped ones (secrets, never-track) stay as '' so they still break a sequence. */
+  private async tail(src: HistorySource): Promise<ParsedCommand[]> {
+    const st = await stat(src.path).catch(() => null)
+    if (!st || st.size === 0) return []
+    const length = Math.min(st.size, RUNBOOK_TAIL)
+    const buf = Buffer.alloc(length)
+    const fh = await open(src.path, 'r')
+    try {
+      await fh.read(buf, 0, length, st.size - length)
+    } finally {
+      await fh.close()
+    }
+    const body = st.size > length ? buf.subarray(buf.indexOf(0x0a) + 1) : buf // drop the partial first line
+    const text = src.format === 'zsh' ? unmetafy(body) : body.toString('utf8')
+    const rules = this.store.getRules()
+    return parseHistory(text, src.format as HistoryFormat).map((c) => (skipReason(c.command.trim(), rules) ? { ...c, command: '' } : c))
   }
 
   hookStatus(): HistoryHookStatus {

@@ -4,6 +4,8 @@ import { canonicalizeProjectTab, isReviewGrouped, isReviewNestedId, parseReviewT
 import type { ExternalApp } from '@shared/types'
 import { Button, Chip, EmptyState, IconButton } from '@/components/ui'
 import { cx, errMsg } from '@/lib/util'
+import { MorningBrief } from '@/components/MorningBrief'
+import { WorkspaceControls } from '@/components/WorkspaceControls'
 import { ActionMenu } from '@/modules/actions/ActionMenu'
 import { Puzzle } from 'lucide-react'
 import { pluginTabs, projectTabsFor } from '@/lib/commands'
@@ -155,7 +157,8 @@ export function ProjectView({ projectId, tab }: { projectId: string; tab: string
               )}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-1.5">
+            <WorkspaceControls projectId={project.id} trusted={workspace.trusted} />
             <ActionMenu ctx={{ scope: 'project', projectId: project.id }} />
             <OpenInMenu path={project.path} />
           </div>
@@ -178,6 +181,7 @@ export function ProjectView({ projectId, tab }: { projectId: string; tab: string
             </button>
           ))}
         </nav>
+        <MorningBrief projectId={project.id} hasGit={project.hasGit} trusted={workspace.trusted} isNode={project.kinds.includes('node')} />
       </header>
 
       <div className="min-h-0 flex-1" role="tabpanel">

@@ -4,6 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { describeCommand, isInteractive, isRisky, programOf } from '../src/main/modules/history/describe'
 import { parseBash, parseFish, parseZsh, unmetafy } from '../src/main/modules/history/parse'
+import { findRunbooks, runbookDraft } from '../src/main/modules/history/runbooks'
 import { HistoryService } from '../src/main/modules/history/service'
 import { HistoryStore, skipReason } from '../src/main/modules/history/store'
 import type { HistorySnapshot } from '../src/shared/types'
@@ -210,5 +211,52 @@ describe('reading a history file over time', () => {
     expect(snap.entries.map((e) => e.command)).toEqual(['git log'])
     expect(snaps.at(-1)).toEqual(snap)
     expect(svc.unignore({ kind: 'command', value: 'ls' }).rules).toEqual([])
+  })
+})
+
+describe('runbooks', () => {
+  const at = (cmds: string[], start = 1_700_000_000, step = 20) => cmds.map((command, i) => ({ command, ts: start + i * step }))
+  const routine = ['git pull', 'pnpm install', 'pnpm test']
+  const day = (n: number) => at(routine, 1_700_000_000 + n * 86_400)
+
+  it('finds a sequence run three times, ignoring the noise between runs', () => {
+    const h = [...day(0), ...at(['ls']), ...day(1), ...at(['open .']), ...day(2)]
+    const out = findRunbooks(h)
+    expect(out).toHaveLength(1)
+    expect(out[0]).toMatchObject({ commands: routine, count: 3, risky: false })
+  })
+
+  it('needs three runs, and drops a shorter piece that only lives inside the longer routine', () => {
+    expect(findRunbooks([...day(0), ...day(1)])).toEqual([])
+    expect(findRunbooks([...day(0), ...day(1), ...day(2)]).map((r) => r.commands.length)).toEqual([3])
+  })
+
+  it('ignores cd, interactive, background and trivial sequences, and commands too far apart', () => {
+    const rep = (cmds: string[]) => [0, 1, 2].flatMap((n) => at(cmds, 1_700_000_000 + n * 86_400))
+    expect(findRunbooks(rep(['cd api', 'pnpm dev']))).toEqual([])
+    expect(findRunbooks(rep(['git pull', 'vim notes.md']))).toEqual([])
+    expect(findRunbooks(rep(['pnpm dev &', 'open http://localhost:3000']))).toEqual([])
+    expect(findRunbooks(rep(['ls', 'pwd']))).toEqual([])
+    expect(findRunbooks(rep(['git pull', 'pnpm test']).map((c, i) => ({ ...c, ts: c.ts + (i % 2) * 4000 })))).toEqual([])
+  })
+
+  it('a skipped command (empty) breaks adjacency, and the draft is one confirmed && chain', () => {
+    const h = [0, 1, 2].flatMap((n) => [...at(['git pull'], 1_700_000_000 + n * 86_400), { command: '', ts: 1_700_000_010 + n * 86_400 }, ...at(['pnpm test'], 1_700_000_020 + n * 86_400)])
+    expect(findRunbooks(h)).toEqual([])
+    const [rb] = findRunbooks([...day(0), ...day(1), ...day(2)])
+    expect(runbookDraft(rb, ' Morning ')).toEqual({ name: 'Morning', scope: 'project', kind: 'shell', template: 'git pull && pnpm install && pnpm test', confirm: true })
+  })
+
+  it('HistoryService.runbooks reads the history file tail and never offers a secret-bearing command', async () => {
+    const d = tmp()
+    const lines = [0, 1, 2].flatMap((n) => {
+      const t = 1_700_000_000 + n * 86_400
+      return [`: ${t}:0;git pull`, `: ${t + 5}:0;export GITHUB_TOKEN=ghp_abcdefghijklmnopqrstuvwxyz0123`, `: ${t + 10}:0;pnpm test`, `: ${t + 20}:0;pnpm build`, `: ${t + 30}:0;pnpm lint`]
+    })
+    writeFileSync(join(d, 'hist'), lines.join('\n') + '\n')
+    const svc = new HistoryService({ dataDir: d, home: d, env: {}, hookDir: join(d, 'h'), sources: [{ path: join(d, 'hist'), format: 'zsh' }], isEnabled: () => true, onChange: () => undefined })
+    const out = await svc.runbooks()
+    expect(out.map((r) => r.commands)).toEqual([['pnpm test', 'pnpm build', 'pnpm lint']])
+    expect(JSON.stringify(out)).not.toMatch(/ghp_|GITHUB_TOKEN/)
   })
 })

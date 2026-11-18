@@ -1,8 +1,8 @@
-import { Eye, EyeOff, FilePlus2, KeyRound, Pencil, Plus, ShieldAlert, TriangleAlert, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, FilePlus2, GitBranch, KeyRound, Pencil, Plus, ShieldAlert, TriangleAlert, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import type { EnvFileInfo, EnvSnapshot, EnvVarInfo } from '@shared/types'
+import type { EnvDrift, EnvFileInfo, EnvSnapshot, EnvVarInfo } from '@shared/types'
 import { Button, Chip, Dialog, EmptyState, IconButton, InlineAlert } from '@/components/ui'
-import { errMsg } from '@/lib/util'
+import { errMsg, tildify } from '@/lib/util'
 import { useProjectsStore } from '@/stores/projects-store'
 import { toast } from '@/stores/toast-store'
 import type { ProjectTabProps } from '../registry'
@@ -165,12 +165,15 @@ export function EnvPanel({ project, workspace }: ProjectTabProps): React.JSX.Ele
   const setTrust = useProjectsStore((s) => s.setTrust)
   const [snap, setSnap] = useState<EnvSnapshot | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [drift, setDrift] = useState<EnvDrift['worktrees']>([])
 
   const load = useCallback(async () => {
     if (!workspace.trusted) return
     try {
       setSnap(await window.cairix.env.list(project.id))
       setError(null)
+      // A side check: if it fails the panel is still fully usable.
+      setDrift((await window.cairix.env.drift(project.id).catch(() => ({ worktrees: [] }))).worktrees)
     } catch (e) {
       setError(errMsg(e))
     }
@@ -220,6 +223,15 @@ export function EnvPanel({ project, workspace }: ProjectTabProps): React.JSX.Ele
           </InlineAlert>
         </div>
       )}
+      {drift.map((w) => (
+        <div key={w.path} className="mb-4">
+          <InlineAlert tone={w.missingHere.length ? 'warning' : 'info'} icon={GitBranch}>
+            <span className="font-medium">Differs from your other checkout {w.branch ? `(${w.branch}) ` : ''}at {tildify(w.path)}.</span>
+            {w.missingHere.length > 0 && <span className="selectable mt-1 block font-mono text-xs">Set there, missing here: {w.missingHere.join(', ')}</span>}
+            {w.extraHere.length > 0 && <span className="selectable mt-1 block font-mono text-xs">Set here, missing there: {w.extraHere.join(', ')}</span>}
+          </InlineAlert>
+        </div>
+      ))}
       {snap && !hasLocal && template && (
         <div className="mb-4 flex items-center gap-3 rounded-xl border border-cx-border bg-cx-raised px-4 py-3">
           <FilePlus2 size={18} className="shrink-0 text-cx-muted" />

@@ -215,6 +215,33 @@ export interface AgentSession {
   /** Where it was launched from, e.g. `claude-desktop`, `cli`. */
   surface?: string
   version?: string
+  /** Git root of `cwd`, when it is inside a repo. */
+  repo?: string
+  /** Changed files in that repo right now (capped). Shared by every agent in the same checkout. */
+  dirtyFiles?: string[]
+}
+
+/** Two or more live agents in the same checkout. */
+export interface AgentCollision {
+  repo: string
+  projectName?: string
+  sessionIds: string[]
+  files: string[]
+  /** warning: two are working at once; info: they share a repo but one is idle. */
+  severity: 'warning' | 'info'
+}
+
+export type FlightKind = 'branch' | 'commit' | 'deps' | 'env' | 'crash'
+
+/** One thing that changed in a project. Env events carry key names only, never values. */
+export interface FlightEvent {
+  id: string
+  at: number
+  projectId: string
+  projectName: string
+  kind: FlightKind
+  title: string
+  detail?: string
 }
 
 export interface AgentCli {
@@ -238,6 +265,7 @@ export interface AgentsSnapshot {
   claude: AgentCli
   cursor: AgentCli & { appRunning: boolean; appRssKb: number }
   sessions: AgentSession[]
+  collisions: AgentCollision[]
   /** Recent plans Cursor's agent wrote (~/.cursor/plans), newest first. */
   plans: CursorPlan[]
 }
@@ -525,6 +553,17 @@ export interface HistoryEntry {
 }
 
 /** "Never track" rule: one exact command, or every command of one program. */
+/** A command sequence you keep repeating, found in shell history. */
+export interface Runbook {
+  /** Hash of the commands; the UI saves a runbook by id, never by sending command text. */
+  id: string
+  commands: string[]
+  count: number
+  lastRun: number
+  /** Any command in it deletes, forces or runs as root. */
+  risky: boolean
+}
+
 export interface HistoryRule {
   kind: 'command' | 'program'
   value: string
@@ -621,6 +660,18 @@ export interface EnvFileInfo {
   extra: string[]
   /** The template this was compared with. */
   template?: string
+}
+
+/** Env key names that differ between this checkout and another git worktree of the same repo. */
+export interface EnvDrift {
+  worktrees: Array<{
+    path: string
+    branch?: string
+    /** Set there, absent here: what will likely fail when you run this checkout. */
+    missingHere: string[]
+    /** Set here, absent there. */
+    extraHere: string[]
+  }>
 }
 
 export interface EnvSnapshot {
@@ -772,6 +823,14 @@ export interface WifiTip {
   detail: string
 }
 
+/** Claude's steps for this router, written from the measurements. The user carries them out. */
+export interface WifiPlan {
+  at: number
+  summary: string
+  steps: Array<{ title: string; how: string; why: string }>
+  costUsd?: number
+}
+
 export interface WifiSnapshot {
   at: number
   available: boolean
@@ -779,6 +838,9 @@ export interface WifiSnapshot {
   link?: WifiLink
   speed?: WifiSpeed
   tips: WifiTip[]
+  /** The router details the user gave once, as text with secrets masked. */
+  router?: string
+  plan?: WifiPlan
 }
 
 // ───────────────────────── Project health ─────────────────────────

@@ -12,6 +12,7 @@ import type {
   AppInfo,
   ContainerAction,
   ContainersSnapshot,
+  FlightEvent,
   DepsReport,
   GitPrResult,
   GitState,
@@ -23,11 +24,13 @@ import type {
   Schedule,
   ScheduleDraft,
   EnvSnapshot,
+  EnvDrift,
   ScriptConfig,
   NavigateTarget,
   RunRecord,
   HistoryRerunRequest,
   HistoryRerunResult,
+  Runbook,
   HistoryRule,
   HistorySnapshot,
   ProcessSnapshot,
@@ -169,6 +172,10 @@ export interface CairixAPI {
     onChange(cb: () => void): Unsubscribe
     onNotify(cb: (n: PluginNotification) => void): Unsubscribe
   }
+  flight: {
+    /** What changed in your trusted projects, newest first. */
+    list(): Promise<FlightEvent[]>
+  }
   agents: {
     /** Live, read-only view of local Claude Code and Cursor agents. */
     snapshot(): Promise<AgentsSnapshot>
@@ -185,6 +192,10 @@ export interface CairixAPI {
     list(): Promise<HistorySnapshot>
     /** Runs a remembered command again. The UI sends an id, never command text. */
     rerun(req: HistoryRerunRequest): Promise<HistoryRerunResult>
+    /** Command sequences you repeat, found in the recent end of your shell history. */
+    runbooks(): Promise<Runbook[]>
+    /** Saves a runbook (by id) as a confirmed project Action with the given name. */
+    saveRunbook(id: string, name: string): Promise<CustomAction>
     /** Stops tracking, and forgets, one command or every command of a program. */
     ignore(rule: HistoryRule): Promise<HistorySnapshot>
     unignore(rule: HistoryRule): Promise<HistorySnapshot>
@@ -204,6 +215,8 @@ export interface CairixAPI {
   env: {
     /** Keys and metadata only. Values never come with the list. */
     list(projectId: string): Promise<EnvSnapshot>
+    /** Other git worktrees whose env key names differ from this project's. Names only. */
+    drift(projectId: string): Promise<EnvDrift>
     /** One value, on request (the user clicked the eye). */
     reveal(projectId: string, file: string, key: string): Promise<string>
     set(projectId: string, file: string, key: string, value: string): Promise<EnvSnapshot>
@@ -239,6 +252,12 @@ export interface CairixAPI {
     status(): Promise<WifiSnapshot>
     /** Runs Apple's networkQuality (about 20 s, real traffic), then returns status with the result. */
     speedTest(): Promise<WifiSnapshot>
+    /** Saves router details once, with passwords and keys masked. Empty text forgets them. */
+    saveRouter(text: string): Promise<WifiSnapshot>
+    /** Main opens a file picker; Claude reads the image into text (paid, capped at $0.15). Null when cancelled. Nothing is saved. */
+    readRouterImage(): Promise<string | null>
+    /** One paid Claude call (capped at $0.25): steps to speed up this router. Needs router details and a speed test with problems. */
+    aiPlan(): Promise<WifiSnapshot>
   }
   health: {
     /** Tool versions against what the project asks for, and the folders using the most disk. */

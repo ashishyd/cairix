@@ -1,11 +1,68 @@
-import { Ban, Copy, FolderOpen, Play, Search, SquareTerminal, TriangleAlert } from 'lucide-react'
-import { useMemo, useState } from 'react'
-import type { HistoryEntry, HistoryRule } from '@shared/types'
+import { Ban, Copy, FolderOpen, ListChecks, Play, Search, SquareTerminal, TriangleAlert } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import type { HistoryEntry, HistoryRule, Runbook } from '@shared/types'
 import { Button, Chip, Dialog, EmptyState, IconButton, Segmented } from '@/components/ui'
 import { errMsg, timeAgo } from '@/lib/util'
 import { projectLabel, useProjectsStore } from '@/stores/projects-store'
 import { useHistoryStore } from '@/stores/history-store'
 import { toast } from '@/stores/toast-store'
+
+/** Sequences you keep repeating, offered as one-click Actions. */
+function Runbooks({ entryCount }: { entryCount: number }): React.JSX.Element | null {
+  const [list, setList] = useState<Runbook[] | null>(null)
+  const [saving, setSaving] = useState<Runbook | null>(null)
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+  // entryCount changes as new commands are read, so the list refreshes with the history.
+  useEffect(() => {
+    window.cairix.history.runbooks().then(setList, () => setList([]))
+  }, [entryCount])
+
+  const save = async (): Promise<void> => {
+    if (!saving) return
+    setBusy(true)
+    try {
+      await window.cairix.history.saveRunbook(saving.id, name)
+      toast.success(`Saved "${name.trim()}". Find it in the Actions menu of any project.`)
+      setSaving(null)
+    } catch (e) {
+      toast.error(errMsg(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (!list || list.length === 0) return null
+  return (
+    <section className="mb-5" aria-label="Repeated sequences">
+      <h2 className="mb-2 cx-label">You keep running these in order</h2>
+      <ul className="overflow-hidden rounded-xl border border-cx-border bg-cx-raised">
+        {list.map((r) => (
+          <li key={r.id} className="flex items-center gap-4 border-b border-cx-border/60 px-4 last:border-0" style={{ paddingTop: 'var(--cx-row-y)', paddingBottom: 'var(--cx-row-y)' }}>
+            <ListChecks size={15} className="shrink-0 text-cx-muted" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="selectable truncate font-mono text-sm" title={r.commands.join('\n')}>{r.commands.join('  →  ')}</p>
+              <p className="text-sm text-cx-faint">{r.count} times{r.lastRun > 0 ? `, last ${timeAgo(r.lastRun)}` : ''}{r.risky ? ' · contains a risky command' : ''}</p>
+            </div>
+            <Button size="sm" onClick={() => { setSaving(r); setName(`${r.commands[0].split(/\s+/).slice(0, 2).join(' ')} routine`) }}>Save as action</Button>
+          </li>
+        ))}
+      </ul>
+      {saving && (
+        <Dialog
+          title="Save as an action"
+          onClose={() => setSaving(null)}
+          footer={<><Button onClick={() => setSaving(null)}>Cancel</Button><Button variant="primary" busy={busy} disabled={!name.trim()} onClick={() => void save()}>Save</Button></>}
+        >
+          <label htmlFor="runbook-name" className="text-sm text-cx-muted">Name</label>
+          <input id="runbook-name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} className="no-drag mt-1 h-8 w-full rounded-lg border border-cx-border bg-cx-raised px-2.5 outline-none focus:border-cx-accent" />
+          <p className="mt-3 text-sm text-cx-muted">It runs these in order inside the project you pick it from, stops at the first one that fails, and always asks first.</p>
+          <ol className="selectable mt-2 list-decimal space-y-1 pl-5 font-mono text-sm">{saving.commands.map((c, i) => <li key={i}>{c}</li>)}</ol>
+        </Dialog>
+      )}
+    </section>
+  )
+}
 
 type Sort = 'count' | 'recent' | 'alpha'
 
@@ -256,6 +313,8 @@ export function HistoryView(): React.JSX.Element {
           </div>
         )
       )}
+
+      {snapshot?.tracking && <Runbooks entryCount={entries.length} />}
 
       {filtered.length > 0 ? (
         <div className="overflow-hidden rounded-xl border border-cx-border bg-cx-raised">

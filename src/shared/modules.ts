@@ -170,6 +170,14 @@ export const MODULES: ModuleManifest[] = [
     defaultEnabled: true
   },
   {
+    id: 'flight',
+    title: 'Flight recorder',
+    description: 'What changed in your projects: branch switches, commits, dependency and env changes, failed runs.',
+    scope: 'machine',
+    status: 'ready',
+    defaultEnabled: true
+  },
+  {
     id: 'actions',
     title: 'Actions',
     description: 'Your own one-click commands, links and "open in app" shortcuts for projects, ports and findings.',

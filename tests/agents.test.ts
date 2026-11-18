@@ -3,9 +3,11 @@ import { utimesSync } from 'fs'
 import { join } from 'path'
 import { isSessionLive, parseLstart, readClaudeSessions } from '../src/main/modules/agents/claude'
 import { cursorApp, findCursorWorkers, planTitle, readCursorPlans } from '../src/main/modules/agents/cursor'
+import { findCollisions, parseDirty } from '../src/main/modules/agents/control'
 import { buildAgentsSnapshot } from '../src/main/modules/agents/service'
 import { parsePs } from '../src/main/modules/ports/parse'
 import { CwdCache } from '../src/main/modules/ports/scanner'
+import type { AgentSession } from '../src/shared/types'
 import { makeTree } from './helpers'
 
 const cleanups: Array<() => void> = []
@@ -176,5 +178,36 @@ describe('buildAgentsSnapshot', () => {
     expect(snap.sessions).toEqual([])
     expect(snap.claude.installed).toBe(false)
     expect(snap.cursor).toMatchObject({ installed: false, appRunning: false, appRssKb: 0 })
+  })
+})
+
+describe('agent control tower', () => {
+  const s = (id: string, repo: string | undefined, status: AgentSession['status']): AgentSession => ({
+    id, kind: 'claude', pid: 1, title: id, cwd: '/x', repo, dirtyFiles: ['a.ts'], status, startedAt: 0, rssKb: 0, cpu: 0
+  })
+
+  it('parseDirty keeps the new name of a rename and caps the list', () => {
+    expect(parseDirty(' M src/a.ts\n?? b.ts\nR  old.ts -> new.ts\n')).toEqual(['src/a.ts', 'b.ts', 'new.ts'])
+    expect(parseDirty(Array.from({ length: 30 }, (_, i) => ` M f${i}.ts`).join('\n'))).toHaveLength(20)
+  })
+
+  it('flags two working agents in one checkout as a warning, one idle as info, and ignores separate repos', () => {
+    expect(findCollisions([s('a', '/r', 'busy'), s('b', '/r', 'busy'), s('c', '/other', 'busy')])).toMatchObject([{ repo: '/r', severity: 'warning', sessionIds: ['a', 'b'], files: ['a.ts'] }])
+    expect(findCollisions([s('a', '/r', 'busy'), s('b', '/r', 'idle')])[0].severity).toBe('info')
+    expect(findCollisions([s('a', undefined, 'busy'), s('b', undefined, 'busy')])).toEqual([])
+  })
+
+  it('end to end: two agents with the same cwd produce one collision', async () => {
+    const h = home({ '.claude/sessions/4242.json': session() })
+    const git = async (file: string, args: string[]) => {
+      if (file === 'git' && args.includes('rev-parse')) return '/Users/x/proj\n'
+      if (file === 'git') return ' M src/a.ts\n'
+      if (file === 'ps' && args.join(' ').includes('lstart=')) return ' 4242 Sun Oct  4 08:59:20 2026\n'
+      if (file === 'ps') return ' 4242 1 4242 1 0.0 01:00 /x/claude\n 5000 1 5000 1 0.0 01:00 /x/cursor-agent --worker-dir /w'
+      if (file === 'lsof') return 'p5000\nfcwd\nn/Users/x/proj\n'
+      return ''
+    }
+    const snap = await buildAgentsSnapshot({ run: git, home: h, detectCli: async () => ({ installed: true }) }, new CwdCache())
+    expect(snap.collisions).toMatchObject([{ repo: '/Users/x/proj', severity: 'warning', files: ['src/a.ts'] }])
   })
 })

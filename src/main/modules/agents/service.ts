@@ -6,6 +6,7 @@ import { spawnEnv } from '../../shell-env'
 import { parsePs } from '../ports/parse'
 import { buildTree, CwdCache, type RunCommand } from '../ports/scanner'
 import { isSessionLive, parseLstart, readClaudeSessions } from './claude'
+import { findCollisions, parseDirty } from './control'
 import { cursorApp, findCursorWorkers, readCursorPlans } from './cursor'
 
 const execFileAsync = promisify(execFile)
@@ -130,6 +131,18 @@ export async function buildAgentsSnapshot(deps: AgentsDeps, cwdCache: CwdCache):
     })
   }
 
+  // One git lookup per distinct folder; `--no-optional-locks` so we never fight an agent for the index.
+  const gitCache = new Map<string, { repo?: string; dirtyFiles?: string[] }>()
+  for (const s of sessions) {
+    if (!s.cwd) continue
+    if (!gitCache.has(s.cwd)) {
+      const git = (args: string[]): Promise<string> => deps.run('git', ['--no-optional-locks', '-C', s.cwd, ...args]).catch(() => '')
+      const repo = (await git(['rev-parse', '--show-toplevel'])).trim()
+      gitCache.set(s.cwd, repo ? { repo, dirtyFiles: parseDirty(await git(['status', '--porcelain'])) } : {})
+    }
+    Object.assign(s, gitCache.get(s.cwd))
+  }
+
   // Busy agents first (that's what you glance at), then most recently active.
   const rank = (s: AgentSession): number => (s.status === 'busy' ? 0 : s.status === 'running' ? 1 : 2)
   sessions.sort((a, b) => rank(a) - rank(b) || (b.updatedAt ?? b.startedAt) - (a.updatedAt ?? a.startedAt))
@@ -140,6 +153,7 @@ export async function buildAgentsSnapshot(deps: AgentsDeps, cwdCache: CwdCache):
     claude,
     cursor: { ...cursorCli, appRunning: app.running, appRssKb: app.rssKb },
     sessions,
+    collisions: findCollisions(sessions),
     plans
   }
 }

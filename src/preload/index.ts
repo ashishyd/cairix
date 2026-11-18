@@ -106,6 +106,9 @@ const api: CairixAPI = {
     onChange: (cb) => on<void>(IPC.pluginsChanged, () => cb()),
     onNotify: (cb) => on(IPC.pluginsNotify, cb)
   },
+  flight: {
+    list: call(IPC.flightList)
+  },
   agents: {
     snapshot: call(IPC.agentsSnapshot)
   },
@@ -124,6 +127,8 @@ const api: CairixAPI = {
   history: {
     list: call(IPC.historyList),
     rerun: call(IPC.historyRerun),
+    runbooks: call(IPC.historyRunbooks),
+    saveRunbook: call(IPC.historySaveRunbook),
     ignore: call(IPC.historyIgnore),
     unignore: call(IPC.historyUnignore),
     installHook: call(IPC.historyHookInstall),
@@ -132,6 +137,7 @@ const api: CairixAPI = {
   },
   env: {
     list: call(IPC.envList),
+    drift: call(IPC.envDrift),
     reveal: call(IPC.envReveal),
     set: call(IPC.envSet),
     remove: call(IPC.envRemove),
@@ -163,7 +169,10 @@ const api: CairixAPI = {
   },
   wifi: {
     status: call(IPC.wifiStatus),
-    speedTest: call(IPC.wifiSpeedTest)
+    speedTest: call(IPC.wifiSpeedTest),
+    saveRouter: call(IPC.wifiSaveRouter),
+    readRouterImage: call(IPC.wifiReadRouterImage),
+    aiPlan: call(IPC.wifiAiPlan)
   },
   health: {
     scan: call(IPC.healthScan),

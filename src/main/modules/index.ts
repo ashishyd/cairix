@@ -26,6 +26,8 @@ import { detectCli } from './agents/service'
 import { parseArgs } from '@shared/args'
 import { findProject, isInsideWorkspace, listWorkspaces } from './projects/store'
 import { registerAgentsHandlers } from './agents/handlers'
+import { registerFlightHandlers } from './flight/handlers'
+import { FlightService } from './flight/service'
 import { AgentsService } from './agents/service'
 import { createNotifier } from './notify/electron'
 import { registerNotifyHandlers } from './notify/handlers'
@@ -43,6 +45,7 @@ import { registerContainersHandlers } from './containers/handlers'
 import { ContainersService } from './containers/service'
 import { registerWifiHandlers } from './wifi/handlers'
 import { WifiService } from './wifi/service'
+import { RouterStore } from './wifi/store'
 import { registerSchedulesHandlers } from './schedules/handlers'
 import { Scheduler } from './schedules/service'
 import { ScheduleStore } from './schedules/store'
@@ -259,7 +262,7 @@ export function registerModules(): Modules {
     })
   )
   registerContainersHandlers(new ContainersService({ projectForFolder: (path) => resolveProjectForCwd(path) }))
-  registerWifiHandlers(new WifiService())
+  registerWifiHandlers(new WifiService({ store: new RouterStore(app.getPath('userData')) }))
   const scheduleStore = new ScheduleStore(app.getPath('userData'), () => broadcast(IPC.schedulesChanged, scheduler.list()))
   const scheduler = new Scheduler(scheduleStore, {
     tickMs: process.env.CAIRIX_SCHEDULER_TICK_MS ? Number(process.env.CAIRIX_SCHEDULER_TICK_MS) : undefined,
@@ -308,9 +311,18 @@ export function registerModules(): Modules {
   registerScriptsHandlers(runner, configs, { listeners: async () => (await ports.scanFresh()).snapshot.entries })
   registerPortsHandlers(ports)
   registerAgentsHandlers(agents)
+  const flight = new FlightService({
+    file: join(userData, 'flight.json'),
+    projects: () => listWorkspaces().flatMap((w) => w.projects.map((p) => ({ id: p.id, name: p.relPath || w.name, path: p.path, trusted: w.trusted, hasGit: p.hasGit }))),
+    git: (cwd, args) => git(cwd, args),
+    failedRuns: () => runHistory.list().filter((r) => r.status === 'failed')
+  })
+  flight.start()
+  registerFlightHandlers(flight)
   registerProcessesHandlers(processes)
   registerHistoryHandlers(history, {
     runner,
+    saveAction: (draft) => actions.save(draft),
     findProject,
     projectForFolder: (path) => {
       const hit = resolveProjectForCwd(path)
@@ -338,6 +350,7 @@ export function registerModules(): Modules {
     ports,
     dispose: () => {
       supervisor.dispose()
+      flight.stop()
       scheduler.stop()
       watcher.dispose()
       tasks.stopAll()

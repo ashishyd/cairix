@@ -1,9 +1,9 @@
-import { lstat, readdir, readFile, rename, writeFile } from 'fs/promises'
+import { lstat, readdir, readFile, realpath, rename, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { randomUUID } from 'crypto'
 import { hasTokenShape, redactTokens } from '@shared/redact'
-import type { EnvFileInfo, EnvSnapshot, EnvVarInfo } from '@shared/types'
-import { ENV_FILE, isTemplateName, parseEnv, removeVar, serializeEnv, setVar, SENSITIVE_KEY, varsOf, KEY_RE } from './parse'
+import type { EnvDrift, EnvFileInfo, EnvSnapshot, EnvVarInfo } from '@shared/types'
+import { ENV_FILE, isTemplateName, parseEnv, parseWorktrees, removeVar, serializeEnv, setVar, SENSITIVE_KEY, varsOf, KEY_RE } from './parse'
 
 const MAX_FILE = 256 * 1024
 const MAX_VALUE = 8 * 1024
@@ -21,6 +21,20 @@ export function previewOf(key: string, value: string): string | undefined {
   if (hasTokenShape(value) || redactTokens(value) !== value) return undefined
   return value
 }
+
+/** Key names (never values) from the non-template `.env*` files of a folder. Symlinks and huge files are skipped. */
+export async function envKeysOf(dir: string): Promise<string[]> {
+  const keys = new Set<string>()
+  const names = (await readdir(dir).catch(() => [] as string[])).filter((n) => ENV_FILE.test(n) && !isTemplateName(n))
+  for (const n of names) {
+    const st = await lstat(join(dir, n)).catch(() => null)
+    if (!st?.isFile() || st.size > MAX_FILE) continue
+    for (const v of varsOf(parseEnv(await readFile(join(dir, n), 'utf8').catch(() => '')))) keys.add(v.key)
+  }
+  return [...keys].sort()
+}
+
+const MAX_DRIFT_KEYS = 30
 
 /**
  * Reads and edits a project's `.env*` files. The renderer only ever names a
@@ -68,6 +82,29 @@ export class EnvService {
     // Templates last: the files you actually use come first.
     files.sort((a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === 'local' ? -1 : 1))
     return { files, hasGit: p.hasGit }
+  }
+
+  /**
+   * Other git worktrees of this repo whose env files have different key names.
+   * Names only. The worktree paths come from git, never from the renderer.
+   */
+  async drift(projectId: string): Promise<EnvDrift> {
+    const p = this.project(projectId)
+    if (!p.hasGit) return { worktrees: [] }
+    const listing = await this.deps.git(p.path, ['worktree', 'list', '--porcelain']).catch(() => '')
+    const self = await realpath(p.path).catch(() => p.path)
+    const mine = await envKeysOf(p.path)
+    const worktrees: EnvDrift['worktrees'] = []
+    for (const w of parseWorktrees(listing)) {
+      const real = w.bare ? null : await realpath(w.path).catch(() => null)
+      if (!real || real === self) continue
+      const theirs = await envKeysOf(real)
+      if (theirs.length === 0) continue // a fresh checkout with no env files says nothing
+      const missingHere = theirs.filter((k) => !mine.includes(k)).slice(0, MAX_DRIFT_KEYS)
+      const extraHere = mine.filter((k) => !theirs.includes(k)).slice(0, MAX_DRIFT_KEYS)
+      if (missingHere.length || extraHere.length) worktrees.push({ path: real, branch: w.branch, missingHere, extraHere })
+    }
+    return { worktrees }
   }
 
   async reveal(projectId: string, file: string, key: string): Promise<string> {

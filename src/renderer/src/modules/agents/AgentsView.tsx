@@ -1,6 +1,6 @@
-import { Bot, Check, FileText, Minus } from 'lucide-react'
+import { Bot, Check, FileText, Minus, TriangleAlert } from 'lucide-react'
 import type { AgentSession } from '@shared/types'
-import { Button, Chip, EmptyState, PageHeader, StatusDot } from '@/components/ui'
+import { Button, Chip, EmptyState, InlineAlert, PageHeader, StatusDot } from '@/components/ui'
 import { cx, formatKb, tildify, timeAgo } from '@/lib/util'
 import { useAgentsStore } from '@/stores/agents-store'
 import { useUiStore } from '@/stores/ui-store'
@@ -47,6 +47,7 @@ function SessionCard({ s }: { s: AgentSession }): React.JSX.Element {
           )}
           {s.cwd && s.projectId && <span> · {tildify(s.cwd)}</span>}
           <span> · started {timeAgo(s.startedAt)}</span>
+          {s.dirtyFiles && s.dirtyFiles.length > 0 && <span> · {s.dirtyFiles.length >= 20 ? '20+' : s.dirtyFiles.length} files changed</span>}
           {s.updatedAt && busy === false && <span> · active {timeAgo(s.updatedAt)}</span>}
         </p>
       </div>
@@ -91,6 +92,21 @@ export function AgentsView(): React.JSX.Element {
           />
         </div>
       )}
+
+      {snapshot?.collisions.map((c) => (
+        <div key={c.repo} className="mt-5">
+          <InlineAlert tone={c.severity === 'warning' ? 'warning' : 'info'} icon={TriangleAlert}>
+            <span className="font-medium">{c.sessionIds.length} agents share {c.projectName ?? tildify(c.repo)}.</span>{' '}
+            {c.severity === 'warning' ? 'Two are working at once, so they may overwrite each other. Give each its own git worktree.' : 'One is idle. Check it is finished before the other edits.'}
+            {c.files.length > 0 && (
+              <span className="selectable mt-1 block truncate font-mono text-xs" title={c.files.join('\n')}>
+                {c.files.length} changed: {c.files.slice(0, 4).join(', ')}
+                {c.files.length > 4 ? ', …' : ''}
+              </span>
+            )}
+          </InlineAlert>
+        </div>
+      ))}
 
       <h2 className="mb-2 mt-7 cx-label">Running now</h2>
       {sessions.length > 0 ? (

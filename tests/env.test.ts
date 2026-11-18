@@ -2,8 +2,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { chmodSync, existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { formatValue, parseEnv, removeVar, serializeEnv, setVar, varsOf } from '../src/main/modules/env/parse'
+import { formatValue, parseEnv, parseWorktrees, removeVar, serializeEnv, setVar, varsOf } from '../src/main/modules/env/parse'
 import { EnvService, previewOf, type EnvDeps } from '../src/main/modules/env/service'
+import { makeTree } from './helpers'
 
 describe('reading .env files', () => {
   it('reads plain, quoted, exported and commented values', () => {
@@ -155,3 +156,26 @@ describe('the env service', () => {
 function readdirTmp(dir: string): string[] {
   return require('fs').readdirSync(dir).filter((n: string) => n.endsWith('.tmp'))
 }
+
+describe('env drift across worktrees', () => {
+  it('parses git worktree --porcelain output', () => {
+    const out = 'worktree /r\nHEAD abc\nbranch refs/heads/main\n\nworktree /r-wt\nHEAD def\nbranch refs/heads/feat/x\n\nworktree /r.git\nbare\n'
+    expect(parseWorktrees(out)).toEqual([
+      { path: '/r', branch: 'main', bare: false },
+      { path: '/r-wt', branch: 'feat/x', bare: false },
+      { path: '/r.git', branch: undefined, bare: true }
+    ])
+  })
+
+  it('reports key names that differ from a sibling worktree, never values, and skips empty checkouts', async () => {
+    const t = makeTree({ 'main/.env': 'A=1\nONLY_HERE=secret-here\n', 'wt/.env': 'A=2\nONLY_THERE=secret-there\n', 'fresh/README': 'x' })
+    const svc = new EnvService({
+      project: () => ({ path: join(t.root, 'main'), trusted: true, name: 'p', hasGit: true }),
+      git: async () => `worktree ${join(t.root, 'main')}\nbranch refs/heads/main\n\nworktree ${join(t.root, 'wt')}\nbranch refs/heads/feat\n\nworktree ${join(t.root, 'fresh')}\nbranch refs/heads/new\n`
+    })
+    const d = await svc.drift('p')
+    expect(d.worktrees).toEqual([{ path: join(t.root, 'wt'), branch: 'feat', missingHere: ['ONLY_THERE'], extraHere: ['ONLY_HERE'] }])
+    expect(JSON.stringify(d)).not.toMatch(/secret/)
+    t.cleanup()
+  })
+})

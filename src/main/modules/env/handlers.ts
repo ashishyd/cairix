@@ -9,6 +9,7 @@ const key = z.string().max(200)
 
 export function registerEnvHandlers(env: EnvService): void {
   handle(IPC.envList, z.tuple([id]), (p) => env.list(p))
+  handle(IPC.envDrift, z.tuple([id]), (p) => env.drift(p))
   handle(IPC.envReveal, z.tuple([id, file, key]), (p, f, k) => env.reveal(p, f, k))
   handle(IPC.envSet, z.tuple([id, file, key, z.string().max(8192)]), (p, f, k, v) => env.set(p, f, k, v))
   handle(IPC.envRemove, z.tuple([id, file, key]), (p, f, k) => env.remove(p, f, k))
