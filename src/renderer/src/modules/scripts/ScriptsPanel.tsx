@@ -1,11 +1,12 @@
 import { Pin, PinOff, ChevronDown, ChevronRight, ExternalLink, Play, FolderSync, Repeat, RotateCw, ShieldAlert, Square, Terminal as TerminalIcon, TriangleAlert, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { PortConflict, PortEntry, RunInfo, ScriptCategory, ScriptDef } from '@shared/types'
+import type { PortConflict, PortEntry, RunInfo, RunRecord, ScriptCategory, ScriptDef } from '@shared/types'
 import { Button, Chip, Dialog, EmptyState, IconButton, StatusDot } from '@/components/ui'
 import { formatEnvLines, parseEnvLines } from '@shared/args'
-import { cx, errMsg, formatKb, parseArgs } from '@/lib/util'
+import { cx, errMsg, formatKb, parseArgs, timeAgo } from '@/lib/util'
 import type { ProjectTabProps } from '@/modules/registry'
 import { usePortsStore } from '@/stores/ports-store'
+import { useRunsStore } from '@/stores/runs-store'
 import { useProjectsStore } from '@/stores/projects-store'
 import { isActive, runForScript, useScriptsStore } from '@/stores/scripts-store'
 import { useSettingsStore } from '@/stores/settings-store'
@@ -72,6 +73,8 @@ function ScriptRow({
   const dirty = argText.trim() !== savedArgs || envText.trim() !== savedEnv
   const [argsOpen, setArgsOpen] = useState(false)
   const active = !!run && isActive(run)
+  // Stored history, so a script shows how it last went even after Cairix restarts.
+  const last = useRunsStore((s) => s.records.reduce<RunRecord | undefined>((a, r) => (r.scriptId === script.id && (!a || r.endedAt > a.endedAt) ? r : a), undefined))
   const mine = run ? entries.filter((e) => e.runId === run.runId) : []
   const memKb = [...new Map(mine.map((e) => [e.footprintPid, e.treeRssKb]))].reduce((a, [, kb]) => a + kb, 0)
   // Who is holding the port this run complained about (subscribed unconditionally: hooks can't be conditional).
@@ -176,6 +179,12 @@ function ScriptRow({
             ))}
             {memKb > 0 && <span className="tabular-nums">{formatKb(memKb)}</span>}
           </div>
+        )}
+
+        {!run && last && (
+          <span className={cx('whitespace-nowrap text-xs', last.status === 'failed' ? 'text-cx-danger' : 'text-cx-faint')} title={`Last run ${new Date(last.endedAt).toLocaleString()}`}>
+            {last.status === 'failed' ? `exit ${last.exitCode ?? '?'}` : last.status === 'stopped' ? 'stopped' : 'passed'} · {timeAgo(last.endedAt)}
+          </span>
         )}
 
         <Chip className="hidden xl:inline-flex">{SOURCE_LABEL[script.source]}</Chip>

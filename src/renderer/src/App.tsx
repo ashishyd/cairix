@@ -21,7 +21,7 @@ import { useHistoryStore } from './stores/history-store'
 import { useRunsStore } from './stores/runs-store'
 import { useProcessesStore } from './stores/processes-store'
 import { usePortsStore } from './stores/ports-store'
-import { findProjectIn, projectLabel, useProjectsStore } from './stores/projects-store'
+import { useProjectsStore } from './stores/projects-store'
 import { useScriptsStore } from './stores/scripts-store'
 import { useSettingsStore } from './stores/settings-store'
 import { toast } from './stores/toast-store'
@@ -53,17 +53,13 @@ function BootSplash(): React.JSX.Element {
 
 function TopBar(): React.JSX.Element {
   const view = useUiStore((s) => s.view)
-  const workspaces = useProjectsStore((s) => s.workspaces)
+  // The project page draws its own title and path; repeating them here only added noise.
+  if (view.kind === 'project') return <div className="drag h-[52px] shrink-0" />
   let title = 'Home'
   let hint = 'Run it, fix it, learn it'
   if (view.kind === 'machine') {
     title = MODULES.find((m) => m.id === view.page)?.title ?? 'Machine'
     hint = MODULES.find((m) => m.id === view.page)?.description ?? ''
-  }
-  if (view.kind === 'project') {
-    const ref = findProjectIn(workspaces, view.projectId)
-    title = ref ? projectLabel(ref) : 'Project'
-    hint = ref?.project.path ?? ''
   }
   return (
     <div className="drag flex h-[52px] shrink-0 items-center gap-3 border-b border-cx-border/60 px-page-x">

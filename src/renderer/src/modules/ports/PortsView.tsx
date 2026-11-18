@@ -1,7 +1,7 @@
-import { Plug, RefreshCw, Search } from 'lucide-react'
+import { Globe, Plug, RefreshCw, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { PortEntry, Project } from '@shared/types'
-import { Button, EmptyState, IconButton, Segmented } from '@/components/ui'
+import { Button, EmptyState, IconButton, InlineAlert, Segmented } from '@/components/ui'
 import { fuzzyMatch, formatKb } from '@/lib/util'
 import { isDevServer, usePortsStore } from '@/stores/ports-store'
 import { PortsTable } from './PortsTable'
@@ -21,6 +21,7 @@ export function PortsView(): React.JSX.Element {
 
   const all = snapshot?.entries ?? []
   const { servers, kb } = useMemo(() => summarize(all), [all])
+  const exposed = useMemo(() => all.filter((e) => e.exposed && !e.protected && isDevServer(e)), [all])
   const visible = useMemo(() => {
     const base = filter === 'dev' ? all.filter(isDevServer) : all
     const q = query.trim()
@@ -53,6 +54,14 @@ export function PortsView(): React.JSX.Element {
           <IconButton icon={RefreshCw} label="Refresh now" onClick={() => void refresh()} />
         </div>
       </div>
+
+      {exposed.length > 0 && (
+        <div className="mb-4">
+          <InlineAlert icon={Globe}>
+            {exposed.length === 1 ? `Port ${exposed[0].port} is` : `Ports ${exposed.map((e) => e.port).join(', ')} are`} reachable from other devices on your network. Restart {exposed.length === 1 ? 'it' : 'them'} bound to 127.0.0.1 if you did not mean to share {exposed.length === 1 ? 'it' : 'them'}.
+          </InlineAlert>
+        </div>
+      )}
 
       {snapshot?.error && <p className="mb-4 rounded-lg bg-cx-danger/10 p-3 text-cx-danger" role="alert">Could not scan ports: {snapshot.error}</p>}
 
