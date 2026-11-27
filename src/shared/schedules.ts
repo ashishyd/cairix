@@ -62,6 +62,22 @@ export function nextRunAt(s: TimeBased, now: number): number | undefined {
   return undefined
 }
 
+export interface UpcomingRun {
+  id: string
+  name: string
+  at: number
+  /** 0 = now, 1 = the end of the window. */
+  fraction: number
+}
+
+/** The next run of each enabled time-based schedule that falls inside the window, soonest first. A schedule that repeats shows once. */
+export function upcomingRuns(list: Array<{ id: string; name: string; enabled: boolean; nextRunAt?: number }>, now: number, windowMs = 24 * 3600_000): UpcomingRun[] {
+  return list
+    .filter((s) => s.enabled && s.nextRunAt !== undefined && s.nextRunAt <= now + windowMs)
+    .map((s) => ({ id: s.id, name: s.name, at: Math.max(now, s.nextRunAt!), fraction: Math.min(1, Math.max(0, (s.nextRunAt! - now) / windowMs)) }))
+    .sort((a, b) => a.at - b.at)
+}
+
 export function describeTrigger(t: ScheduleTrigger, projectName?: string): string {
   if (t.kind === 'every') {
     const m = t.minutes

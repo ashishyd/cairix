@@ -131,6 +131,7 @@ export function ProcessesView(): React.JSX.Element {
   }, [all, query])
   const totalKb = useMemo(() => all.reduce((a, e) => a + e.treeRssKb, 0), [all])
   const maxKb = all.reduce((m, e) => Math.max(m, e.treeRssKb), 0)
+  const busiest = all.reduce((b, e) => (e.cpu > b.cpu ? e : b), all[0] ?? { name: '', cpu: 0 })
 
   return (
     <div className="mx-auto max-w-[1040px] px-page-x py-page-y">
@@ -152,6 +153,14 @@ export function ProcessesView(): React.JSX.Element {
           <IconButton icon={RefreshCw} label="Refresh now" onClick={() => void refresh(filter)} />
         </div>
       </div>
+
+      {current && all.length > 0 && (
+        <div className="mb-4 grid grid-cols-3 gap-3">
+          <div className="rounded-xl border border-cx-border bg-cx-raised px-4 py-3"><div className="text-xs text-cx-faint">Processes</div><div className="mt-0.5 text-lg font-semibold tabular-nums">{all.length}</div></div>
+          <div className="rounded-xl border border-cx-border bg-cx-raised px-4 py-3"><div className="text-xs text-cx-faint">Memory</div><div className="mt-0.5 text-lg font-semibold tabular-nums">{formatKb(totalKb)}</div></div>
+          <div className="rounded-xl border border-cx-border bg-cx-raised px-4 py-3"><div className="text-xs text-cx-faint">Busiest right now</div><div className="mt-0.5 truncate text-lg font-semibold">{busiest.name}</div><div className="text-xs text-cx-muted tabular-nums">{busiest.cpu.toFixed(0)}% CPU</div></div>
+        </div>
+      )}
 
       {current?.error && <p className="mb-4 rounded-lg bg-cx-danger/10 p-3 text-cx-danger" role="alert">Could not list processes: {current.error}</p>}
 

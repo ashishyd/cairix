@@ -107,7 +107,8 @@ const api: CairixAPI = {
     onNotify: (cb) => on(IPC.pluginsNotify, cb)
   },
   flight: {
-    list: call(IPC.flightList)
+    list: call(IPC.flightList),
+    sinceGood: call(IPC.flightSinceGood)
   },
   agents: {
     snapshot: call(IPC.agentsSnapshot)

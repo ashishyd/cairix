@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { stat } from 'fs/promises'
 import { join } from 'path'
 import { z } from 'zod'
-import type { FlightEvent } from '@shared/types'
+import type { FlightEvent, FlightSince } from '@shared/types'
 import { readJson, writeJsonAtomic } from '../../json-store'
 import { envKeysOf } from '../env/service'
 
@@ -12,6 +12,8 @@ export interface FlightDeps {
   /** Runs git in a folder. Rejects on a non-zero exit. */
   git(cwd: string, args: string[]): Promise<string>
   failedRuns(): Array<{ runId: string; projectId: string; projectName: string; scriptName: string; endedAt: number; exitCode?: number | null }>
+  /** When this script last finished well before `before`, or null. */
+  lastPassAt(projectId: string, scriptName: string, before: number): number | null
   now?(): number
 }
 
@@ -62,6 +64,18 @@ export class FlightService {
 
   list(): FlightEvent[] {
     return [...this.data.events].sort((a, b) => b.at - a.at)
+  }
+
+  /** Changes in the failed run's project since its script last passed. Only failure events qualify. */
+  sinceGood(eventId: string): FlightSince | null {
+    const fail = this.data.events.find((e) => e.id === eventId && e.kind === 'crash')
+    if (!fail) return null
+    const scriptName = fail.title.replace(/ failed$/, '')
+    const passedAt = this.deps.lastPassAt(fail.projectId, scriptName, fail.at)
+    const events = this.list()
+      .filter((e) => e.projectId === fail.projectId && e.kind !== 'crash' && e.at <= fail.at && (passedAt === null || e.at > passedAt))
+      .reverse()
+    return { passedAt, failedAt: fail.at, scriptName, events }
   }
 
   start(intervalMs = 30_000): void {

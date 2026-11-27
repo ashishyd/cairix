@@ -13,6 +13,7 @@ import type {
   ContainerAction,
   ContainersSnapshot,
   FlightEvent,
+  FlightSince,
   DepsReport,
   GitPrResult,
   GitState,
@@ -177,6 +178,8 @@ export interface CairixAPI {
   flight: {
     /** What changed in your trusted projects, newest first. */
     list(): Promise<FlightEvent[]>
+    /** For a failed-run event: the changes since that script last passed. Null if the event is gone or is not a failure. */
+    sinceGood(eventId: string): Promise<FlightSince | null>
   }
   agents: {
     /** Live, read-only view of local Claude Code and Cursor agents. */

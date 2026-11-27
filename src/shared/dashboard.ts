@@ -25,6 +25,8 @@ export const WIDGETS = {
   listening: { title: 'Listening now', description: 'Dev servers on this machine with their memory.', defaultSize: 'half' },
   agents: { title: 'Agents', description: 'Local Claude Code and Cursor agents and what they are doing.', defaultSize: 'half' },
   changes: { title: 'Pending changes', description: 'Projects with uncommitted work and any problems found in it.', defaultSize: 'half' },
+  projects: { title: 'Projects', description: 'Your projects with branch, pending changes and what is running.', defaultSize: 'full' },
+  recent: { title: 'Since yesterday', description: 'What changed in your projects in the last day.', defaultSize: 'half' },
   pinned: { title: 'Pinned scripts', description: 'Your favourite scripts, one click from Home.', defaultSize: 'half' }
 } as const satisfies Record<string, WidgetMeta>
 
@@ -35,11 +37,13 @@ export const MAX_WIDGETS = 24
 
 export const DEFAULT_DASHBOARD: DashboardItem[] = [
   { id: 'needs', type: 'needs', size: 'full' },
+  { id: 'projects', type: 'projects', size: 'full' },
   { id: 'stats', type: 'stats', size: 'full' },
   { id: 'running', type: 'running', size: 'half' },
   { id: 'listening', type: 'listening', size: 'half' },
   { id: 'agents', type: 'agents', size: 'half' },
-  { id: 'changes', type: 'changes', size: 'half' }
+  { id: 'changes', type: 'changes', size: 'half' },
+  { id: 'recent', type: 'recent', size: 'half' }
 ]
 
 /** Moves `id` so it sits just before `beforeId` (or at the end when null). No-op for unknown ids. */

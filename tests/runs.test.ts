@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { cleanOutput, RunHistoryStore, tailOf } from '../src/main/modules/runs/store'
-import { formatDuration, summarizeRuns } from '../src/shared/runs'
+import { formatDuration, runTrail, summarizeRuns } from '../src/shared/runs'
 import type { RunInfo, RunRecord } from '../src/shared/types'
 
 const dirs: string[] = []
@@ -119,4 +119,13 @@ describe('durations', () => {
     expect(formatDuration(185_000)).toBe('3m 05s')
     expect(formatDuration(3_720_000)).toBe('1h 02m')
   })
+})
+
+describe('runTrail', () => {
+  const at = (id: string, endedAt: number, scriptId = 's1'): RunRecord => ({ runId: id, scriptId, projectId: 'p', projectName: 'p', scriptName: 's', command: 'c', startedAt: endedAt - 1, endedAt, durationMs: 1, status: 'exited' })
+  it('keeps the newest n runs of one script, oldest first', () => {
+    const records = [at('a', 10), at('b', 30), at('c', 20), at('other', 99, 's2'), at('d', 40)]
+    expect(runTrail(records, 's1', 3).map((r) => r.runId)).toEqual(['c', 'b', 'd'])
+  })
+  it('is empty for a script that never ran', () => expect(runTrail([at('a', 1)], 'nope')).toEqual([]))
 })

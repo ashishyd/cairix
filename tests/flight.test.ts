@@ -36,6 +36,7 @@ describe('FlightService', () => {
       now: () => 1000,
       projects: () => [{ id: 'p1', name: 'proj', path: dir, trusted, hasGit: true }],
       git: async (_cwd, args) => (args.includes('--abbrev-ref') ? branch : 'c'.repeat(40)),
+      lastPassAt: () => null,
       failedRuns: () => [{ runId: 'r1', projectId: 'p1', projectName: 'proj', scriptName: 'dev', endedAt: 500, exitCode: 1 }]
     })
     await svc.tick()
@@ -54,5 +55,37 @@ describe('FlightService', () => {
     branch = 'other'
     await svc.tick()
     expect(svc.list().some((e) => e.title.includes('other'))).toBe(false)
+  })
+})
+
+describe('FlightService.sinceGood', () => {
+  it('returns only changes after the last pass and up to the failure, oldest first', async () => {
+    const t = makeTree({ 'p/pnpm-lock.yaml': 'x' })
+    cleanups.push(t.cleanup)
+    const dir = join(t.root, 'p')
+    let now = 100
+    let branch = 'main'
+    const svc = new FlightService({
+      file: join(t.root, 'flight.json'),
+      now: () => now,
+      projects: () => [{ id: 'p1', name: 'proj', path: dir, trusted: true, hasGit: true }],
+      git: async (_cwd, args) => (args.includes('--abbrev-ref') ? branch : 'c'.repeat(40)),
+      lastPassAt: (_p, script) => (script === 'build' ? 150 : null),
+      failedRuns: () => (now >= 300 ? [{ runId: 'r9', projectId: 'p1', projectName: 'proj', scriptName: 'build', endedAt: 300, exitCode: 1 }] : [])
+    })
+    await svc.tick() // baseline
+    now = 120
+    branch = 'a'
+    await svc.tick() // before the pass: excluded
+    now = 200
+    branch = 'b'
+    await svc.tick() // after the pass: included
+    now = 300
+    await svc.tick() // logs the failure
+    const res = svc.sinceGood('crash:r9')
+    expect(res?.passedAt).toBe(150)
+    expect(res?.events.map((e) => e.at)).toEqual([200])
+    expect(svc.sinceGood('nope')).toBeNull()
+    expect(svc.sinceGood(svc.list().find((e) => e.kind === 'branch')!.id)).toBeNull()
   })
 })

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { cleanTopic, dayKey, DEFAULT_LEARN, learnedStreak, MAX_TOPIC_LENGTH, TOPIC_GROUPS, topicOfTheDay, type Lesson } from '../src/shared/learn'
+import { cleanTopic, dayKey, DEFAULT_LEARN, learnedStreak, MAX_TOPIC_LENGTH, shiftLevel, TOPIC_GROUPS, topicOfTheDay, type Lesson } from '../src/shared/learn'
 import { keyLabels, KEYMAPS, platformOf, searchKeymap, type KeymapPlatform } from '../src/shared/keymap'
 import { buildPrompt, LESSON_SCHEMA, lessonArgs, parseLesson } from '../src/main/modules/learn/lesson'
 import { LearnService } from '../src/main/modules/learn/service'
@@ -271,5 +271,14 @@ describe('learning settings', () => {
   it('keeps the rest of the learning settings when only one is patched', () => {
     const merged = { ...DEFAULT_LEARN, topics: ['Git'], ...{ level: 'advanced' as const } }
     expect(merged).toEqual({ topics: ['Git'], level: 'advanced', autoGenerate: true })
+  })
+})
+
+describe('shiftLevel', () => {
+  it('moves one step and stops at the ends', () => {
+    expect(shiftLevel('intermediate', 1)).toBe('advanced')
+    expect(shiftLevel('intermediate', -1)).toBe('beginner')
+    expect(shiftLevel('advanced', 1)).toBe('advanced')
+    expect(shiftLevel('beginner', -1)).toBe('beginner')
   })
 })

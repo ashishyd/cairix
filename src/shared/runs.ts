@@ -13,6 +13,15 @@ export function formatDuration(ms: number): string {
 /** A run counts as a failure when it failed; stopping it yourself is not one. */
 export const isFailure = (r: Pick<RunRecord, 'status'>): boolean => r.status === 'failed'
 
+/** The newest `n` finished runs of one script, oldest first, so a trail reads left to right in time. */
+export function runTrail(records: RunRecord[], scriptId: string, n = 8): RunRecord[] {
+  return records
+    .filter((r) => r.scriptId === scriptId)
+    .sort((a, b) => b.endedAt - a.endedAt)
+    .slice(0, n)
+    .reverse()
+}
+
 export interface ScriptStats {
   key: string
   scriptId: string

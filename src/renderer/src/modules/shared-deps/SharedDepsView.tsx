@@ -111,6 +111,14 @@ export function SharedDepsView(): React.JSX.Element {
         <EmptyState icon={Layers} title="No duplicates worth sharing">Every package version is either installed once or already shared.</EmptyState>
       ) : (
         <>
+          <section aria-label="Reclaimable space" className="mb-4 flex flex-wrap items-center gap-5 rounded-xl border border-cx-border bg-cx-raised p-4">
+            <div>
+              <p className="cx-label">You could get back</p>
+              <p className="text-2xl font-semibold tracking-tight tabular-nums">{formatKb(report.reclaimableKb)}</p>
+            </div>
+            <p className="min-w-[220px] flex-1 text-cx-muted">{report.groups.length} {report.groups.length === 1 ? 'package is' : 'packages are'} installed at the same version in more than one of your {report.projects} projects. Pick the ones to share below.</p>
+            <Button onClick={() => setPicked(new Set(report.groups.map((g) => g.key)))} disabled={picked.size === report.groups.length}>Select all {report.groups.length}</Button>
+          </section>
           <section aria-label="Duplicate packages" className="overflow-hidden rounded-xl border border-cx-border bg-cx-raised">
             <header className="flex items-center justify-between gap-2 border-b border-cx-border bg-cx-surface px-4 py-2">
               <h2 className="cx-label">Installed more than once</h2>

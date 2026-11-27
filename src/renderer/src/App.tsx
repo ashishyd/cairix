@@ -8,9 +8,12 @@ import { CommandPalette } from './components/CommandPalette'
 import { KillDialog } from './components/KillDialog'
 import { KeybindingsDialog } from './components/KeybindingsDialog'
 import { SettingsDialog } from './components/SettingsDialog'
-import { Sidebar } from './components/Sidebar'
+import { LivePanel } from './components/LivePanel'
+import { Pulse } from './components/Pulse'
+import { navGroupOf, Sidebar } from './components/Sidebar'
+import { StatusPills } from './components/StatusPills'
 import { Toasts } from './components/Toasts'
-import { EmptyState, Skeleton } from './components/ui'
+import { EmptyState, Kbd, Skeleton } from './components/ui'
 import { errMsg } from './lib/util'
 import { RENDERER_MODULES } from './modules/registry'
 import { ActionDialogs } from './modules/actions/ActionDialogs'
@@ -28,7 +31,8 @@ import { toast } from './stores/toast-store'
 import { useUiStore } from './stores/ui-store'
 import { HomeView } from './views/HomeView'
 import { ProjectView } from './views/ProjectView'
-import { Plug } from 'lucide-react'
+import { Plug, Search } from 'lucide-react'
+import { useShortcut } from './lib/commands'
 
 function BootSplash(): React.JSX.Element {
   return (
@@ -53,19 +57,29 @@ function BootSplash(): React.JSX.Element {
 
 function TopBar(): React.JSX.Element {
   const view = useUiStore((s) => s.view)
-  // The project page draws its own title and path; repeating them here only added noise.
-  if (view.kind === 'project') return <div className="drag h-[52px] shrink-0" />
-  let title = 'Home'
-  let hint = 'Run it, fix it, learn it'
-  if (view.kind === 'machine') {
-    title = MODULES.find((m) => m.id === view.page)?.title ?? 'Machine'
-    hint = MODULES.find((m) => m.id === view.page)?.description ?? ''
-  }
+  const setPalette = useUiStore((s) => s.setPalette)
+  const kPalette = useShortcut('palette.open')
+  // The project page draws its own title and path, so the bar only names Home and machine pages.
+  const crumb = view.kind === 'project' ? null : view.kind === 'home' ? ['Cairix', 'Today'] : [navGroupOf(view.page), MODULES.find((m) => m.id === view.page)?.title ?? '']
   return (
-    <div className="drag flex h-[52px] shrink-0 items-center gap-3 border-b border-cx-border/60 px-page-x">
-      <div className="min-w-0">
-        <span className="block truncate text-sm font-medium text-cx-text">{title}</span>
-        {hint && <span className="block truncate text-xs text-cx-faint">{hint}</span>}
+    <div className="drag flex h-[52px] shrink-0 items-center gap-3 border-b border-cx-border/60 px-4">
+      <div className="min-w-0 flex-1 basis-0 text-sm text-cx-muted">
+        {crumb && (
+          <span className="block truncate">
+            {crumb[0]} <span aria-hidden="true">›</span> <b className="font-semibold text-cx-text">{crumb[1]}</b>
+          </span>
+        )}
+      </div>
+      <button
+        onClick={() => setPalette(true)}
+        className="no-drag flex h-8 w-[min(440px,26%)] shrink-0 items-center gap-2 rounded-lg border border-cx-border bg-cx-raised px-3 text-left text-cx-faint transition-colors hover:border-cx-accent/60"
+      >
+        <Search size={14} />
+        <span className="min-w-0 flex-1 truncate">Jump to anything, run a script, or ask Claude</span>
+        {kPalette && <Kbd>{kPalette}</Kbd>}
+      </button>
+      <div className="flex min-w-0 flex-1 basis-0 justify-end">
+        <StatusPills />
       </div>
     </div>
   )
@@ -140,12 +154,16 @@ export default function App(): React.JSX.Element {
   return (
     <div className="flex h-full">
       <Sidebar />
-      <main className="flex min-w-0 flex-1 flex-col bg-cx-bg">
+      <div className="flex min-w-0 flex-1 flex-col bg-cx-bg">
         <TopBar />
-        <div className={view.kind === 'project' ? 'min-h-0 flex-1 overflow-hidden' : 'min-h-0 flex-1 overflow-y-auto'}>
-          <Content />
+        <div className="flex min-h-0 flex-1">
+          <main className={view.kind === 'project' ? 'min-w-0 flex-1 overflow-hidden' : 'min-w-0 flex-1 overflow-y-auto'}>
+            <Content />
+          </main>
+          {settings.livePanel && <LivePanel />}
         </div>
-      </main>
+        {settings.pulse && <Pulse />}
+      </div>
 
       {paletteOpen && <CommandPalette />}
       {settingsOpen && <SettingsDialog />}

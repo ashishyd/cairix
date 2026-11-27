@@ -293,7 +293,8 @@ await step('the script row reflects that it stopped', async () => {
 
 await step('Agents page lists a live Claude session, hides stale ones, and never reads key files', async () => {
   await page.getByRole('complementary', { name: 'Sidebar' }).getByRole('button', { name: /^Agents/ }).click()
-  await page.getByText('E2E: fix the login bug').waitFor({ timeout: 10_000 })
+  // the Live panel repeats a working agent, so look inside the page itself
+  await page.getByRole('main').getByText('E2E: fix the login bug').waitFor({ timeout: 10_000 })
   const main = await page.locator('main').innerText()
   assert(main.includes('Working'), 'busy session should read "Working"')
   assert(main.includes('web-app'), 'session should be linked to its project')
@@ -738,8 +739,8 @@ await step('Dashboard: pin a script, add widgets, reorder by drag and by keyboar
   await page.getByRole('button', { name: 'Pin to Home' }).first().click()
   await page.getByRole('button', { name: 'Unpin from Home' }).first().waitFor()
 
-  await side.getByRole('button', { name: 'Home' }).click()
-  assert(JSON.stringify(await widgetTitles()) === JSON.stringify(['Needs you', 'Overview', 'Running from Cairix', 'Listening now', 'Agents', 'Pending changes']), `default layout wrong: ${await widgetTitles()}`)
+  await side.getByRole('button', { name: 'Today' }).click()
+  assert(JSON.stringify(await widgetTitles()) === JSON.stringify(['Needs you', 'Projects', 'Overview', 'Running from Cairix', 'Listening now', 'Agents', 'Pending changes', 'Since yesterday']), `default layout wrong: ${await widgetTitles()}`)
   // the cross-project widget sees web-app's uncommitted dirty.js
   const changes = page.locator('section[aria-label="Pending changes"]')
   await changes.getByText('1 changed file').waitFor({ timeout: 20_000 })
@@ -752,19 +753,19 @@ await step('Dashboard: pin a script, add widgets, reorder by drag and by keyboar
   await pinned.getByText('serve').waitFor({ timeout: 10_000 })
   await settle(); await page.screenshot({ path: join(shots, '21-dashboard-edit.png') })
 
-  // drag "Agents" before "Needs you"
-  await page.locator('section[aria-label="Agents"]').dragTo(page.locator('section[aria-label="Needs you"]'))
-  await page.waitForFunction(() => [...document.querySelectorAll('main section[aria-label]')].map((e) => e.getAttribute('aria-label')).filter((t) => t !== 'Getting started')[0] === 'Agents')
-  // keyboard: move Agents down one place
-  await page.getByRole('button', { name: 'Move Agents down' }).click()
-  await page.waitForFunction(() => [...document.querySelectorAll('main section[aria-label]')].map((e) => e.getAttribute('aria-label')).filter((t) => t !== 'Getting started').slice(0, 2).join() === 'Needs you,Agents')
+  // drag "Projects" (right under it, so both stay on screen) before "Needs you"
+  await page.locator('section[aria-label="Projects"]').dragTo(page.locator('section[aria-label="Needs you"]'))
+  await page.waitForFunction(() => [...document.querySelectorAll('main section[aria-label]')].map((e) => e.getAttribute('aria-label')).filter((t) => t !== 'Getting started')[0] === 'Projects')
+  // keyboard: move Projects down one place
+  await page.getByRole('button', { name: 'Move Projects down' }).click()
+  await page.waitForFunction(() => [...document.querySelectorAll('main section[aria-label]')].map((e) => e.getAttribute('aria-label')).filter((t) => t !== 'Getting started').slice(0, 2).join() === 'Needs you,Projects')
   // resize + remove
   await page.getByRole('button', { name: 'Make Pinned scripts full width' }).click()
   await page.getByRole('button', { name: 'Remove Listening now' }).click()
   await page.getByRole('button', { name: 'Done' }).click()
 
   const saved = JSON.parse(readFileSync(join(userData, 'settings.json'), 'utf8'))
-  assert(saved.dashboard.map((d) => d.type).join() === 'needs,agents,stats,running,changes,pinned', `saved order wrong: ${saved.dashboard.map((d) => d.type)}`)
+  assert(saved.dashboard.map((d) => d.type).join() === 'needs,projects,stats,running,agents,changes,recent,pinned', `saved order wrong: ${saved.dashboard.map((d) => d.type)}`)
   assert(saved.dashboard.at(-1).size === 'full' && saved.pinnedScripts.length === 1, 'size/pins not saved')
   await settle(); await page.screenshot({ path: join(shots, '22-dashboard.png') })
   // controls are hidden again outside edit mode
@@ -774,7 +775,7 @@ await step('Dashboard: pin a script, add widgets, reorder by drag and by keyboar
   await page.getByRole('button', { name: 'Customize' }).click()
   await page.getByRole('button', { name: 'Reset layout' }).click()
   await page.getByRole('button', { name: 'Done' }).click()
-  assert(JSON.stringify(await widgetTitles()) === JSON.stringify(['Needs you', 'Overview', 'Running from Cairix', 'Listening now', 'Agents', 'Pending changes']), 'reset should restore the default layout')
+  assert(JSON.stringify(await widgetTitles()) === JSON.stringify(['Needs you', 'Projects', 'Overview', 'Running from Cairix', 'Listening now', 'Agents', 'Pending changes', 'Since yesterday']), 'reset should restore the default layout')
 })
 
 await step('Shortcuts: rebind with validation and conflicts, bind a custom action to a key, reset all', async () => {
@@ -846,7 +847,7 @@ await step('Plugins: install, review permissions, run in the sandbox (widget, ta
   const stubPick = (path) => app.evaluate(({ dialog }, p) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [p] }) }, path)
   const widgetsOnHome = async () => page.locator('main section[aria-label]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))
   const addWidget = async (name) => {
-    await side.getByRole('button', { name: 'Home' }).click()
+    await side.getByRole('button', { name: 'Today' }).click()
     await page.getByRole('button', { name: 'Customize' }).click()
     await page.getByRole('button', { name: 'Add widget' }).click()
     await page.getByRole('menuitem', { name: new RegExp(name) }).click()
@@ -914,7 +915,7 @@ await step('Plugins: install, review permissions, run in the sandbox (widget, ta
   await side.getByRole('button', { name: /^Plugins/ }).click()
   await card.getByRole('button', { name: 'Turn off' }).click()
   await card.getByText('Off').waitFor()
-  await side.getByRole('button', { name: 'Home' }).click()
+  await side.getByRole('button', { name: 'Today' }).click()
   await page.waitForFunction(() => !document.querySelector('section[aria-label="Hello counter"]'), undefined, { timeout: 10_000 })
   await side.getByText('web-app').first().click()
   assert((await page.getByRole('tab', { name: 'Hello' }).count()) === 0, 'the plugin tab should disappear when it is turned off')
@@ -1276,7 +1277,7 @@ await step('settings: dark theme and accent apply', async () => {
 })
 
 await step('dark Ports/Home views render', async () => {
-  await page.getByRole('complementary', { name: 'Sidebar' }).getByRole('button', { name: 'Home' }).click()
+  await page.getByRole('complementary', { name: 'Sidebar' }).getByRole('button', { name: 'Today' }).click()
   await page.getByText('Everything running on this Mac').waitFor()
   await settle(); await page.screenshot({ path: join(shots, '12-home-dark.png') })
 })

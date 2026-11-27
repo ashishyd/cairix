@@ -1,7 +1,9 @@
 import { Gauge, ImageUp, RefreshCw, Router, Sparkles, Wifi } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import type { WifiSnapshot } from '@shared/types'
-import { Button, Dialog, EmptyState, IconButton, PageHeader, Skeleton, StatusDot } from '@/components/ui'
+import type { WifiBand, WifiLink, WifiSnapshot } from '@shared/types'
+import { channelLoads, quietChannels } from '@shared/wifi-crowd'
+import { Button, Dialog, EmptyState, IconButton, PageHeader, Segmented, Skeleton, StatusDot } from '@/components/ui'
+import { cx } from '@/lib/util'
 import { errMsg } from '@/lib/util'
 import { toast } from '@/stores/toast-store'
 
@@ -12,6 +14,38 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
       <div className="selectable mt-0.5 text-lg font-semibold tracking-tight">{value}</div>
       {hint && <div className="text-xs text-cx-muted">{hint}</div>}
     </div>
+  )
+}
+
+/** How many other networks share each channel, for the band you pick. Yours is marked. */
+function ChannelCrowding({ link }: { link: WifiLink }): React.JSX.Element {
+  const bands = (['2.4 GHz', '5 GHz', '6 GHz'] as WifiBand[]).filter((b) => b === link.band || link.nearby.some((n) => n.band === b))
+  const [band, setBand] = useState<WifiBand>(link.band ?? bands[0] ?? '5 GHz')
+  const loads = channelLoads(link, band)
+  const max = Math.max(1, ...loads.map((l) => l.others))
+  const quiet = link.band === band ? quietChannels(loads) : []
+  return (
+    <section aria-label="Channel crowding" className="rounded-xl border border-cx-border bg-cx-raised">
+      <header className="flex items-center justify-between gap-3 border-b border-cx-border bg-cx-surface px-4 py-2">
+        <span className="font-medium">Channel crowding</span>
+        {bands.length > 1 && <Segmented value={band} onChange={setBand} options={bands.map((b) => ({ value: b, label: b }))} />}
+      </header>
+      <div className="p-4">
+        <div className="flex h-28 items-end gap-1.5" role="img" aria-label={`Other networks per ${band} channel`}>
+          {loads.map((l) => (
+            <div key={l.channel} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1" title={`Channel ${l.channel}: ${l.others} other ${l.others === 1 ? 'network' : 'networks'}${l.mine ? ' (yours)' : ''}`}>
+              <span className="text-2xs tabular-nums text-cx-faint">{l.others > 0 ? l.others : ''}</span>
+              <i className={cx('block w-full max-w-7 rounded-t', l.mine ? 'bg-cx-accent' : 'bg-cx-border')} style={{ height: `${Math.max(2, (l.others / max) * 80)}px` }} />
+              <span className={cx('text-2xs tabular-nums', l.mine ? 'font-semibold text-cx-accent-text' : 'text-cx-faint')}>{l.channel}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-sm text-cx-muted">
+          Bar height is how many other networks Cairix hears on that channel. Yours is blue.
+          {quiet.length > 0 && <> Quieter here: <span className="font-medium text-cx-text">{quiet.join(', ')}</span>. Change it in your router's admin page.</>}
+        </p>
+      </div>
+    </section>
   )
 }
 
@@ -149,6 +183,8 @@ export function WifiView(): React.JSX.Element {
               <Stat label="Standard" value={link.phyMode ?? '—'} hint={`${link.nearby.length} other networks heard`} />
             </div>
           )}
+
+          {link?.connected && <ChannelCrowding key={link.band} link={link} />}
 
           <section aria-label="Speed test" className="rounded-xl border border-cx-border bg-cx-raised">
             <header className="border-b border-cx-border bg-cx-surface px-4 py-2 font-medium">Internet speed</header>

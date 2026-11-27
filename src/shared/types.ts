@@ -244,6 +244,15 @@ export interface FlightEvent {
   detail?: string
 }
 
+/** What changed in a project between the last time a script passed and a later failure. */
+export interface FlightSince {
+  /** When the script last finished well, or null when Cairix has never seen it pass. */
+  passedAt: number | null
+  failedAt: number
+  scriptName: string
+  events: FlightEvent[]
+}
+
 export interface AgentCli {
   installed: boolean
   version?: string

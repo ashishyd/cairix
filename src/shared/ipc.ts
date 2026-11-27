@@ -47,6 +47,7 @@ export const IPC = {
   agentsSnapshot: 'agents:snapshot',
 
   flightList: 'flight:list',
+  flightSinceGood: 'flight:sinceGood',
 
   processesScan: 'processes:scan',
   processesStop: 'processes:stop',

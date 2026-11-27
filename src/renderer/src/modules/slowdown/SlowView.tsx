@@ -2,7 +2,7 @@ import { Gauge, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import type { SlowFinding, SlowReport } from '@shared/types'
 import { Button, Chip, Dialog, EmptyState, IconButton, InlineAlert, PageHeader, Skeleton, StatusDot } from '@/components/ui'
-import { errMsg } from '@/lib/util'
+import { cx, errMsg } from '@/lib/util'
 import { toast } from '@/stores/toast-store'
 
 const TONE = { high: 'danger', medium: 'warning', low: 'muted' } as const
@@ -69,6 +69,20 @@ export function SlowView(): React.JSX.Element {
           If it still feels slow, run this while it happens: CPU, memory, disk and heat are read at that moment.
         </EmptyState>
       ) : (
+        <>
+        <section aria-label="Summary" className="mb-4 flex flex-wrap items-center gap-5 rounded-xl border border-cx-border bg-cx-raised p-4">
+          <div className="min-w-[240px] flex-1">
+            <p className="text-lg font-semibold tracking-tight">{report.findings[0].title}</p>
+            <p className="mt-0.5 text-cx-muted">
+              {report.findings.length} {report.findings.length === 1 ? 'cause' : 'causes'} found, worst first.{' '}
+              {report.findings.filter((f) => f.fix).length > 0 ? `${report.findings.filter((f) => f.fix).length} can be fixed here, each after you confirm.` : 'None can be fixed from here.'}
+            </p>
+          </div>
+          <div className="w-52" aria-label={`Load ${report.load1.toFixed(1)} on ${report.cores} cores`}>
+            <div className="mb-1 flex justify-between text-xs text-cx-faint"><span>CPU load</span><span className="tabular-nums">{report.load1.toFixed(1)} / {report.cores}</span></div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-cx-hover"><i className={cx('block h-full rounded-full', report.load1 / report.cores >= 1 ? 'bg-cx-danger' : report.load1 / report.cores >= 0.7 ? 'bg-cx-warning' : 'bg-cx-success')} style={{ width: `${Math.min(100, (report.load1 / report.cores) * 100)}%` }} /></div>
+          </div>
+        </section>
         <section aria-label="Causes" className="overflow-hidden rounded-xl border border-cx-border bg-cx-raised">
           {report.findings.map((f) => (
             <div key={f.id} className="flex items-start gap-3 border-b border-cx-border/60 px-4 last:border-0" style={{ paddingTop: 'var(--cx-row-y)', paddingBottom: 'var(--cx-row-y)' }}>
@@ -81,6 +95,7 @@ export function SlowView(): React.JSX.Element {
             </div>
           ))}
         </section>
+        </>
       )}
       {confirm && (
         <Dialog

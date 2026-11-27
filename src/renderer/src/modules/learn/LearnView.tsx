@@ -1,6 +1,6 @@
 import { Check, CircleCheck, CircleX, Copy, Flame, GraduationCap, Loader2, RefreshCw, Settings as SettingsIcon, Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { dayKey, LEVEL_LABEL, learnedStreak, topicOfTheDay, type LearnSnapshot, type Lesson } from '@shared/learn'
+import { dayKey, LEVEL_LABEL, learnedStreak, shiftLevel, topicOfTheDay, type LearnSnapshot, type Lesson } from '@shared/learn'
 import { Button, Chip, EmptyState, InlineAlert } from '@/components/ui'
 import { cx, errMsg } from '@/lib/util'
 import { useSettingsStore } from '@/stores/settings-store'
@@ -123,6 +123,13 @@ function LessonView({ lesson, onMark }: { lesson: Lesson; onMark: (learned: bool
 /** One short lesson a day on the topics and level you chose in Settings, written by Claude. */
 export function LearnView(): React.JSX.Element {
   const learn = useSettingsStore((s) => s.settings.learn)
+  const patchSettings = useSettingsStore((s) => s.patch)
+  const tooEasy = shiftLevel(learn.level, 1)
+  const tooHard = shiftLevel(learn.level, -1)
+  const setLevel = (level: typeof learn.level): void => {
+    void patchSettings({ learn: { level } })
+    toast.success(`Next lesson will be ${LEVEL_LABEL[level]}.`)
+  }
   const setSettings = useUiStore((s) => s.setSettings)
   // The page stays mounted behind the Settings dialog: do not spend a lesson on every topic ticked while choosing.
   const settingsOpen = useUiStore((s) => s.settingsOpen)
@@ -201,6 +208,8 @@ export function LearnView(): React.JSX.Element {
         </div>
         <div className="flex items-center gap-2">
           {streak > 0 && <Chip tone="warning" title="Days in a row with a lesson marked as learned"><Flame size={11} /> {streak}-day streak</Chip>}
+          <Button size="sm" disabled={tooEasy === learn.level} onClick={() => setLevel(tooEasy)} title="Make the next lessons harder">Too easy</Button>
+          <Button size="sm" disabled={tooHard === learn.level} onClick={() => setLevel(tooHard)} title="Make the next lessons easier">Too hard</Button>
           <Button icon={SettingsIcon} onClick={() => setSettings(true)}>Topics &amp; level</Button>
         </div>
       </div>

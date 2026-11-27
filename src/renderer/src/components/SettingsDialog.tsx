@@ -168,6 +168,12 @@ export function SettingsDialog(): React.JSX.Element {
         <Row title="Text size" hint={`${settings.fontSize}px`}>
           <input type="range" min={12} max={16} step={1} value={settings.fontSize} onChange={(e) => void patch({ fontSize: Number(e.target.value) })} aria-label="Text size" className="no-drag w-40 accent-[rgb(var(--cx-accent))]" />
         </Row>
+        <Row title="Live panel" hint="Running scripts, agents and dev servers on the right.">
+          <Toggle checked={settings.livePanel} onChange={(livePanel) => void patch({ livePanel })} label="Show the Live panel" />
+        </Row>
+        <Row title="Pulse timeline" hint="The last 8 hours of changes along the bottom.">
+          <Toggle checked={settings.pulse} onChange={(pulse) => void patch({ pulse })} label="Show the Pulse timeline" />
+        </Row>
         <Row title="Translucent sidebar" hint="Uses macOS vibrancy. Takes effect for new windows.">
           <Toggle checked={settings.vibrancy} onChange={(vibrancy) => void patch({ vibrancy })} label="Translucent sidebar" />
         </Row>

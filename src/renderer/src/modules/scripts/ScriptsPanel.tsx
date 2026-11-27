@@ -4,6 +4,7 @@ import type { PortConflict, PortEntry, RunInfo, RunRecord, ScriptCategory, Scrip
 import { Button, Chip, Dialog, EmptyState, IconButton, StatusDot } from '@/components/ui'
 import { formatEnvLines, parseEnvLines } from '@shared/args'
 import { cx, errMsg, formatKb, parseArgs, timeAgo } from '@/lib/util'
+import { formatDuration, isFailure, runTrail } from '@shared/runs'
 import type { ProjectTabProps } from '@/modules/registry'
 import { usePortsStore } from '@/stores/ports-store'
 import { useRunsStore } from '@/stores/runs-store'
@@ -38,6 +39,25 @@ function runStatusChip(run: RunInfo): React.JSX.Element | null {
   if (run.status === 'failed') return <Chip tone="danger">Failed{run.exitCode != null ? ` · exit ${run.exitCode}` : ''}</Chip>
   if (run.status === 'stopped') return <Chip>Stopped</Chip>
   return <Chip tone="success">Done</Chip>
+}
+
+/** Tiny bars, one per recent run: green passed, red failed, grey stopped. Height follows how long the run took. */
+function RunTrail({ trail }: { trail: RunRecord[] }): React.JSX.Element {
+  const slowest = Math.max(...trail.map((r) => r.durationMs), 1)
+  const failed = trail.filter(isFailure).length
+  const label = `Last ${trail.length} runs: ${failed === 0 ? 'all passed' : `${failed} failed`}`
+  return (
+    <span role="img" aria-label={label} title={label} className="hidden h-4 items-end gap-0.5 md:flex">
+      {trail.map((r) => (
+        <i
+          key={r.runId}
+          title={`${isFailure(r) ? 'Failed' : r.status === 'stopped' ? 'Stopped' : 'Passed'} · ${formatDuration(r.durationMs)} · ${timeAgo(r.endedAt)}`}
+          style={{ height: `${30 + (r.durationMs / slowest) * 70}%` }}
+          className={cx('w-1 rounded-sm', isFailure(r) ? 'bg-cx-danger' : r.status === 'stopped' ? 'bg-cx-faint/60' : 'bg-cx-success')}
+        />
+      ))}
+    </span>
+  )
 }
 
 function ScriptRow({
@@ -75,6 +95,8 @@ function ScriptRow({
   const active = !!run && isActive(run)
   // Stored history, so a script shows how it last went even after Cairix restarts.
   const last = useRunsStore((s) => s.records.reduce<RunRecord | undefined>((a, r) => (r.scriptId === script.id && (!a || r.endedAt > a.endedAt) ? r : a), undefined))
+  const allRecords = useRunsStore((s) => s.records)
+  const trail = useMemo(() => runTrail(allRecords, script.id), [allRecords, script.id])
   const mine = run ? entries.filter((e) => e.runId === run.runId) : []
   const memKb = [...new Map(mine.map((e) => [e.footprintPid, e.treeRssKb]))].reduce((a, [, kb]) => a + kb, 0)
   // Who is holding the port this run complained about (subscribed unconditionally: hooks can't be conditional).
@@ -180,6 +202,8 @@ function ScriptRow({
             {memKb > 0 && <span className="tabular-nums">{formatKb(memKb)}</span>}
           </div>
         )}
+
+        {trail.length > 1 && <RunTrail trail={trail} />}
 
         {!run && last && (
           <span className={cx('whitespace-nowrap text-xs', last.status === 'failed' ? 'text-cx-danger' : 'text-cx-faint')} title={`Last run ${new Date(last.endedAt).toLocaleString()}`}>

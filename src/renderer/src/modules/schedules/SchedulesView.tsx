@@ -1,6 +1,6 @@
 import { CalendarClock, Pencil, Play, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { describeTrigger } from '@shared/schedules'
+import { describeTrigger, upcomingRuns } from '@shared/schedules'
 import type { Schedule, ScheduleDraft, ScriptDef, TaskAgent } from '@shared/types'
 import { Button, Chip, Dialog, EmptyState, IconButton, Segmented, Toggle } from '@/components/ui'
 import { errMsg, timeAgo } from '@/lib/util'
@@ -134,6 +134,29 @@ function Editor({ initial, onClose }: { initial: Schedule | null; onClose: () =>
 }
 
 /** Run a script or an agent task on a timer, at a time of day, or when a branch changes. */
+/** One dot per schedule at the time it next runs, across the next 24 hours. */
+function NextDay({ list }: { list: Schedule[] }): React.JSX.Element {
+  const now = Date.now()
+  const runs = upcomingRuns(list, now)
+  const clock = (h: number): string => new Date(now + h * 3600_000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return (
+    <section aria-label="Next 24 hours" className="mb-4 rounded-xl border border-cx-border bg-cx-raised p-4">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 className="font-medium">Next 24 hours</h2>
+        <span className="text-sm text-cx-faint">{runs.length === 0 ? 'Nothing is due' : `${runs.length} ${runs.length === 1 ? 'schedule' : 'schedules'} due`}</span>
+      </div>
+      <div className="relative h-4">
+        <span className="absolute inset-x-0 top-[7px] h-0.5 rounded-full bg-cx-border" />
+        {runs.map((r) => (
+          <i key={r.id} role="img" aria-label={`${r.name} at ${fmtNext(r.at, now)}`} title={`${r.name} · ${fmtNext(r.at, now)}`} style={{ left: `${Math.min(98, r.fraction * 100)}%` }} className="absolute top-0.5 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-cx-raised bg-cx-accent" />
+        ))}
+      </div>
+      <div className="mt-1 flex justify-between text-xs tabular-nums text-cx-faint"><span>now</span><span>{clock(8)}</span><span>{clock(16)}</span><span>{clock(24)}</span></div>
+      <p className="mt-2 text-xs text-cx-faint">Each dot is a schedule's next run. Ones that repeat show once. Branch-change schedules have no time.</p>
+    </section>
+  )
+}
+
 export function SchedulesView(): React.JSX.Element {
   const workspaces = useProjectsStore((s) => s.workspaces)
   const [list, setList] = useState<Schedule[] | null>(null)
@@ -184,6 +207,8 @@ export function SchedulesView(): React.JSX.Element {
         </div>
         <Button variant="primary" icon={Plus} onClick={() => setEditing('new')}>New schedule</Button>
       </div>
+
+      {list && list.some((s) => s.enabled && s.nextRunAt) && <NextDay list={list} />}
 
       {list && list.length === 0 ? (
         <EmptyState icon={CalendarClock} title="Nothing scheduled" action={<Button variant="primary" icon={Plus} onClick={() => setEditing('new')}>Create a schedule</Button>}>

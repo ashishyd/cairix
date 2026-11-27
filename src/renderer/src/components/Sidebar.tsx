@@ -15,12 +15,15 @@ import {
   History,
   SquareTerminal,
   RefreshCw,
-  Search,
   Settings,
   ShieldAlert,
   Terminal,
   Puzzle,
   Zap,
+  Wifi,
+  Gauge,
+  Layers,
+  Rewind,
   Trash2,
   type LucideIcon
 } from 'lucide-react'
@@ -36,16 +39,22 @@ import { isActive, useScriptsStore } from '@/stores/scripts-store'
 import { useSettingsStore } from '@/stores/settings-store'
 import { useUiStore } from '@/stores/ui-store'
 import { BrandLogo } from './BrandLogo'
-import { IconButton, Kbd, StatusDot } from './ui'
+import { IconButton, StatusDot } from './ui'
 
-const MACHINE_ICONS: Record<string, LucideIcon> = { ports: Plug, processes: Activity, keymap: Keyboard, learn: GraduationCap, containers: Container, schedules: CalendarClock, runs: History, history: SquareTerminal, agents: Bot, actions: Zap, plugins: Puzzle }
+const MACHINE_ICONS: Record<string, LucideIcon> = { ports: Plug, processes: Activity, keymap: Keyboard, learn: GraduationCap, containers: Container, schedules: CalendarClock, runs: History, history: SquareTerminal, agents: Bot, actions: Zap, plugins: Puzzle, wifi: Wifi, slowdown: Gauge, shareddeps: Layers, flight: Rewind }
 
 // Machine pages split by how you use them; any id not listed lands in Tools so new modules still show up.
 const MACHINE_GROUPS: { title: string; ids: string[] }[] = [
-  { title: 'Running', ids: ['ports', 'processes', 'containers', 'wifi'] },
-  { title: 'Automation', ids: ['agents', 'schedules', 'runs', 'actions'] },
-  { title: 'Tools', ids: [] }
+  { title: 'This Mac', ids: ['ports', 'processes', 'containers', 'agents', 'slowdown', 'wifi', 'shareddeps'] },
+  { title: 'Automate', ids: ['schedules', 'runs', 'history', 'actions', 'flight', 'plugins'] },
+  { title: 'More', ids: [] }
 ]
+
+/** The sidebar group a machine page sits in, so the top bar's breadcrumb names the same one. */
+export function navGroupOf(id: string): string {
+  if (MODULES.find((m) => m.id === id)?.scope === 'learn') return 'Learn'
+  return MACHINE_GROUPS.find((g) => g.ids.includes(id))?.title ?? 'More'
+}
 
 function NavItem({ icon: Icon, label, active, onClick, trailing }: { icon: LucideIcon; label: string; active: boolean; onClick: () => void; trailing?: React.ReactNode }): React.JSX.Element {
   return (
@@ -157,10 +166,9 @@ function WorkspaceNode({ ws, runningIds }: { ws: Workspace; runningIds: Set<stri
 }
 
 export function Sidebar(): React.JSX.Element {
-  const { view, go, setAddFolder, setSettings, setPalette } = useUiStore()
+  const { view, go, setAddFolder, setSettings } = useUiStore()
   const kAdd = useShortcut('folder.add')
   const kSettings = useShortcut('settings.open')
-  const kPalette = useShortcut('palette.open')
   const workspaces = useProjectsStore((s) => s.workspaces)
   const runs = useScriptsStore((s) => s.runs)
   const snapshot = usePortsStore((s) => s.snapshot)
@@ -182,20 +190,8 @@ export function Sidebar(): React.JSX.Element {
       className="sidebar-bg drag flex h-full w-[256px] shrink-0 flex-col border-r border-cx-border/70 pt-[52px]"
       aria-label="Sidebar"
     >
-      <div className="no-drag px-2 pb-2">
-        <button
-          onClick={() => setPalette(true)}
-          title="Search or run anything"
-          className="flex h-8 w-full items-center gap-2 rounded-lg border border-cx-border bg-cx-surface px-2.5 text-left text-cx-faint transition-colors hover:bg-cx-hover"
-        >
-          <Search size={14} />
-          <span className="flex-1">Search or run…</span>
-          {kPalette && <Kbd>{kPalette}</Kbd>}
-        </button>
-      </div>
-
       <div className="flex-1 overflow-y-auto px-2 pb-2">
-        <NavItem icon={House} label="Home" active={view.kind === 'home'} onClick={() => go({ kind: 'home' })} />
+        <NavItem icon={House} label="Today" active={view.kind === 'home'} onClick={() => go({ kind: 'home' })} />
 
         <Section title="Projects" action={<IconButton icon={FolderPlus} label={`Add a folder${kAdd ? ` (${kAdd})` : ''}`} size={14} onClick={() => setAddFolder(true)} />}>
           {workspaces.length === 0 ? (

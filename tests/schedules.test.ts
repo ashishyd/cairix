@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { mkdtempSync, realpathSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { CATCHUP_MS, describeTrigger, isDue, lastOccurrence, nextOccurrence, nextRunAt, parseTime, triggerProblem } from '../src/shared/schedules'
+import { CATCHUP_MS, describeTrigger, isDue, lastOccurrence, nextOccurrence, nextRunAt, parseTime, triggerProblem, upcomingRuns } from '../src/shared/schedules'
 import { Scheduler, type SchedulerDeps } from '../src/main/modules/schedules/service'
 import { ScheduleStore } from '../src/main/modules/schedules/store'
 import type { ScheduleDraft, ScheduleTrigger } from '../src/shared/types'
@@ -200,4 +200,15 @@ describe('the scheduler', () => {
     h.store.save({ ...draft({ trigger: { kind: 'every', minutes: 30 }, enabled: true }), id: s.id }, h.now())
     expect(h.sched.list()[0].nextRunAt).toBe(h.now() + 30 * 60_000)
   })
+})
+
+describe('upcomingRuns', () => {
+  const H = 3600_000
+  const s = (id: string, nextRunAt: number | undefined, enabled = true): { id: string; name: string; enabled: boolean; nextRunAt?: number } => ({ id, name: id, enabled, nextRunAt })
+  it('keeps enabled schedules due inside the window, soonest first, with their place on the line', () => {
+    const out = upcomingRuns([s('late', 20 * H), s('soon', 6 * H), s('paused', 2 * H, false), s('far', 30 * H), s('branch', undefined)], 0)
+    expect(out.map((r) => r.id)).toEqual(['soon', 'late'])
+    expect(out[0].fraction).toBeCloseTo(0.25)
+  })
+  it('treats an overdue schedule as now', () => expect(upcomingRuns([s('a', -5)], 0)[0]).toMatchObject({ at: 0, fraction: 0 }))
 })

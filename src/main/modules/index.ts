@@ -327,7 +327,9 @@ export function registerModules(): Modules {
     file: join(userData, 'flight.json'),
     projects: () => listWorkspaces().flatMap((w) => w.projects.map((p) => ({ id: p.id, name: p.relPath || w.name, path: p.path, trusted: w.trusted, hasGit: p.hasGit }))),
     git: (cwd, args) => git(cwd, args),
-    failedRuns: () => runHistory.list().filter((r) => r.status === 'failed')
+    failedRuns: () => runHistory.list().filter((r) => r.status === 'failed'),
+    lastPassAt: (projectId, scriptName, before) =>
+      runHistory.list().filter((r) => r.projectId === projectId && r.scriptName === scriptName && r.status === 'exited' && r.endedAt < before).reduce<number | null>((m, r) => (m === null || r.endedAt > m ? r.endedAt : m), null)
   })
   flight.start()
   registerFlightHandlers(flight)

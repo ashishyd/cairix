@@ -39,6 +39,10 @@ export interface Settings {
   trayShowsPortCount: boolean
   /** Run the AI review automatically when pending changes settle (uses your Claude quota). Instant checks always run. */
   reviewWithAi: boolean
+  /** Show the Live panel (running scripts, agents, ports, memory) on the right. */
+  livePanel: boolean
+  /** Show the Pulse timeline of recent changes along the bottom. */
+  pulse: boolean
   /** The Home dashboard: ordered widgets. */
   dashboard: DashboardItem[]
   /** Script ids pinned to the Home dashboard. */
@@ -73,6 +77,8 @@ export const DEFAULT_SETTINGS: Settings = {
   enabledModules: {},
   trayShowsPortCount: true,
   reviewWithAi: false,
+  livePanel: true,
+  pulse: true,
   dashboard: DEFAULT_DASHBOARD,
   pinnedScripts: [],
   autoRestartScripts: [],

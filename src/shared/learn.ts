@@ -3,6 +3,11 @@
 export const LEVELS = ['beginner', 'intermediate', 'advanced'] as const
 export type LearnLevel = (typeof LEVELS)[number]
 
+/** One step easier (-1) or harder (+1), stopping at the ends. */
+export function shiftLevel(level: LearnLevel, delta: -1 | 1): LearnLevel {
+  return LEVELS[Math.min(LEVELS.length - 1, Math.max(0, LEVELS.indexOf(level) + delta))]
+}
+
 export const LEVEL_LABEL: Record<LearnLevel, string> = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' }
 export const LEVEL_HINT: Record<LearnLevel, string> = {
   beginner: 'New to it: plain words, small steps, no assumptions.',

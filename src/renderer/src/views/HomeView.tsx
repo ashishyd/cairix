@@ -6,6 +6,11 @@ import { Dashboard } from '@/modules/dashboard/Dashboard'
 import { useProjectsStore } from '@/stores/projects-store'
 import { useUiStore } from '@/stores/ui-store'
 
+function greeting(now = new Date()): string {
+  const h = now.getHours()
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+}
+
 export function HomeView(): React.JSX.Element {
   const setAddFolder = useUiStore((s) => s.setAddFolder)
   const workspaces = useProjectsStore((s) => s.workspaces)
@@ -42,7 +47,7 @@ export function HomeView(): React.JSX.Element {
   return (
     <div className="mx-auto max-w-[1000px] px-page-x py-page-y">
       <PageHeader
-        title="Home"
+        title={greeting()}
         subtitle={`${projectCount} project${projectCount === 1 ? '' : 's'} · everything running on this Mac, at a glance.`}
         actions={<Button size="sm" icon={FolderPlus} onClick={() => setAddFolder(true)}>Add folder</Button>}
       />
